@@ -11,18 +11,20 @@
 # Place the Zope major version number below.
 ZOPE_VERS=2.8
 
-# Place the optimal target version number for Zope (as returned by sys.version)
+# Order a list of "preferred" python version numbers (as returned by
+# sys.version) below in "best" to "worst" order.
+# Up to four preferred python versions are allowed.
 # below
-TARGET="2.3.3"
+PREFERRED="2.3.3 2.3.4"
 
 # Order a list of "acceptable" python version numbers (as returned by
 # sys.version) below in "best" to "worst" order, not including the
-# target version.  Up to six acceptable python versions are allowed.
-# Do not include the target version number in this list!
-ACCEPTABLE="2.3.4 2.3.2 2.3.1 2.3"
+# preferred version.  Up to six acceptable python versions are allowed.
+# Do not include preferred version numbers in this list!
+ACCEPTABLE="2.3.2 2.3.1 2.3"
 
 # provide the executable names for all the acceptable versions
-# (and the target version) below
+# (and the preferred versions) below
 EXENAMES="python python2 python2.3"
 
 #####################################################################
@@ -68,6 +70,7 @@ get_python() {
     FOUND=""
     VERSION=""
     FOUNDLIST=""
+    PREF_FOUNDLIST=""
     out "Testing for an acceptable Python interpreter..."
     out ""
     for DIR in $PATH; do
@@ -80,14 +83,34 @@ get_python() {
 		CMD="$CMD;a=(a[-1]=='+')and(a[:-1])or(a);print a"
                 VERSION=`"$FULL" -c "$CMD"`
                 out "  Python version $VERSION found at $FULL"
-                if [ "$VERSION" = "$TARGET" ]; then
-                    FOUND="$FULL"
-                    FOUNDVERSION=$VERSION
-                    break 2
-                else
-                    i=1;
+		i=0;
+                for P in $PREFERRED; do
+		    i=`expr $i + 1`
+		    echo "XXX I: $i"
+		    for SLOT in $PREF_FOUNDLIST; do
+			if [ $SLOT -eq $i ]; then
+                            # slot "i" already populated.  
+			    # This means we've
+                            # already found this particular version of
+                            # python.  Continue the for ACC in 
+                            # $PREFERRED loop and don't overwrite the
+                            # one we already found (interpreters first
+                            # on the path win).
+			    continue 2
+			fi
+		    done
+		    if [ "$VERSION" = "$P" ]; then
+			PREF_FOUNDLIST="$PREF_FOUNDLIST $i"
+			eval "PREF$i=$FULL"
+			eval "PREFVERSION$i=$VERSION"
+			break 2
+		    fi
+		done
+                if [ -z "$PREF_FOUNDLIST" ]; then
+                    i=0;
                     for ACC in $ACCEPTABLE; do
                         i=`expr $i + 1`
+			echo "I XXX $i"
 			for SLOT in $FOUNDLIST; do
                             if [ $SLOT -eq $i ]; then
                                 # slot "i" already populated.  This means we've
@@ -101,51 +124,66 @@ get_python() {
                         done
                         if [ "$VERSION" = "$ACC" ]; then
                             FOUNDLIST="$FOUNDLIST $i"
-                            eval "FOUND$i=$FULL"
-                            eval "FOUNDVERSION$i=$VERSION"
+                            eval "ACC$i=$FULL"
+                            eval "ACCVERSION$i=$VERSION"
                         fi
                     done
                 fi
             fi
         done
     done
-    if [ "$VERSION" = "$TARGET" ]; then
+    # now pick the best of the found versions.
+    if [ "$PREF_FOUNDLIST" ]; then
+	if [ -n "$PREF1" ]; then
+	    FOUND=$PREF1
+	    FOUNDVERSION=$PREFVERSION1
+	elif [ -n "$PREF2" ]; then
+	    FOUND=$PREF2
+	    FOUNDVERSION=$PREFVERSION2
+	elif [ -n "$PREF3" ]; then
+	    FOUND=$PREF3
+	    FOUNDVERSION=$PREFVERSION3
+	elif [ -n "$PREF4" ]; then
+	    FOUND=$PREF4
+	    FOUNDVERSION=$PREFVERSION4
+	fi
         out ""
-        out "  The optimum Python version ($TARGET) was found at $FOUND."
-    elif [ -z "$FOUND1" ] && [ -z "$FOUND2" ] && [ -z "$FOUND3" ] &&
-         [ -z "$FOUND4" ] && [ -z "$FOUND5" ] && [ -z "$FOUND6" ] ; then
+        out "  A preferred Python version ($FOUNDVERSION) was found at $FOUND."
+    elif [ -z "$ACC1" ] && [ -z "$ACC2" ] && [ -z "$ACC3" ] &&
+         [ -z "$ACC4" ] && [ -z "$ACC5" ] && [ -z "$ACC6" ] ; then
         out ""
         out "  No suitable Python version found.  You should install"
-        out "  Python version $TARGET before continuing.  Versions"
-        out "  $ACCEPTABLE also work, but not as optimally."
+        out "  python with a preferred version ($PREFERRED) before continuing."
+        out "  Versions $ACCEPTABLE also work, but not as optimally."
         exit 1
     else
-        if   [ -n "$FOUND1" ]; then
-            FOUND=$FOUND1
-            FOUNDVERSION=$FOUNDVERSION1
-        elif [ -n "$FOUND2" ]; then
-            FOUND=$FOUND2
-            FOUNDVERSION=$FOUNDVERSION2
-        elif [ -n "$FOUND3" ]; then
-            FOUND=$FOUND3
-            FOUNDVERSION=$FOUNDVERSION3
-        elif [ -n "$FOUND4" ]; then
-            FOUND=$FOUND4
-            FOUNDVERSION=$FOUNDVERSION4
-        elif [ -n "$FOUND5" ]; then
-            FOUND=$FOUND5
-            FOUNDVERSION=$FOUNDVERSION5
-        elif [ -n "$FOUND6" ]; then
-            FOUND=$FOUND6
-            FOUNDVERSION=$FOUNDVERSION6
+        if   [ -n "$ACC1" ]; then
+            FOUND=$ACC1
+            FOUNDVERSION=$ACCVERSION1
+        elif [ -n "$ACC2" ]; then
+            FOUND=$ACC2
+            FOUNDVERSION=$ACCVERSION2
+        elif [ -n "$ACC3" ]; then
+            FOUND=$ACC3
+            FOUNDVERSION=$ACCVERSION3
+        elif [ -n "$ACC4" ]; then
+            FOUND=$ACC4
+            FOUNDVERSION=$ACCVERSION4
+        elif [ -n "$ACC5" ]; then
+            FOUND=$ACC5
+            FOUNDVERSION=$ACCVERSION5
+        elif [ -n "$ACC6" ]; then
+            FOUND=$ACC6
+            FOUNDVERSION=$ACCVERSION6
         fi
         out ""
         out "  !! WARNING !! "
         out "  An acceptable, but non-optimal Python version ($FOUNDVERSION) "
         out "  was found at '$FOUND'."
-        out "  But consider installing version '$TARGET' before running "
-        out "  'make'.  If this isn't the Python version or interpreter "
-        out "  instance you wish to use, you may specify a Python interpreter"
+        out "  But consider installing a preferred version ($PREFERRED) and"
+	out "  re-running 'configure' before running 'make'. "
+        out "  If this isn't the Python version or interpreter instance"
+        out "  you wish to use, you may specify a Python interpreter"
         out "  manually by rerunning the ./configure script with the "
         out "  '--with-python' option."
     fi
