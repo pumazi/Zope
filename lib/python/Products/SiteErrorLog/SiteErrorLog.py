@@ -17,6 +17,7 @@ $Id$
 """
 
 import os
+import os.path
 import sys
 import time
 import logging
@@ -29,7 +30,9 @@ from Acquisition import aq_base
 from AccessControl import ClassSecurityInfo, getSecurityManager, Unauthorized
 from OFS.SimpleItem import SimpleItem
 from Products.PageTemplates.PageTemplateFile import PageTemplateFile
+from Globals import HTMLFile
 from zExceptions.ExceptionFormatter import format_exception
+from App.config import getConfiguration
 
 LOG = logging.getLogger('Zope.SiteErrorLog')
 
@@ -86,6 +89,9 @@ class SiteErrorLog (SimpleItem):
     security.declareProtected(use_error_logging, 'showEntry')
     showEntry = PageTemplateFile('showEntry.pt', _www)
 
+    security.declareProtected(use_error_logging, 'showEntryText')
+    showEntryText = HTMLFile('www/showEntryText', globals())
+
     security.declarePrivate('manage_beforeDelete')
     def manage_beforeDelete(self, item, container):
         if item is self:
@@ -117,9 +123,6 @@ class SiteErrorLog (SimpleItem):
             temp_logs[self._p_oid] = log
         return log
 
-    # Exceptions that happen all the time, so we dont need
-    # to log them. Eventually this should be configured
-    # through-the-web.
     security.declareProtected(use_error_logging, 'forgetEntry')
     def forgetEntry(self, id, REQUEST=None):
         """Removes an entry from the error log."""
@@ -136,6 +139,29 @@ class SiteErrorLog (SimpleItem):
                 message='Error log entry was removed.',
                 action='./manage_main',)
 
+    security.declareProtected(use_error_logging, 'saveEntry')
+    def saveEntry(self, id, REQUEST=None):
+        """Saves an entry in the server's "var" directory."""
+        entry = self.getLogEntryById(id)
+
+        if entry is None:
+            if REQUEST is not None:
+                REQUEST.RESPONSE.redirect(self.absolute_url()+"manage_tabs_message=Exception+not+found.")
+            else:
+                raise KeyError, id
+
+        text = self.showEntryText(self, REQUEST=REQUEST)
+        var = getConfiguration().clienthome
+        filename = os.path.join(var, "Exception-"+id) 
+        f = file(filename, 'wb')
+        f.write(text)
+        f.close()
+        if REQUEST is not None:
+            REQUEST.RESPONSE.redirect(self.absolute_url()+"/showEntry?id=%s&manage_tabs_message=Exception+saved+as+%s+on+server." % (REQUEST.get('id'), filename))
+
+    # Exceptions that happen all the time, so we dont need
+    # to log them. Eventually this should be configured
+    # through-the-web.
     _ignored_exceptions = ( 'Unauthorized', 'NotFound', 'Redirect' )
 
     security.declarePrivate('raising')
@@ -169,6 +195,7 @@ class SiteErrorLog (SimpleItem):
                 username = None
                 userid   = None
                 req_html = None
+                req_text = None
                 try:
                     strv = str(info[1])
                 except:
@@ -180,6 +207,10 @@ class SiteErrorLog (SimpleItem):
                     userid = usr.getId()
                     try:
                         req_html = str(request)
+                    except:
+                        pass
+                    try:
+                        req_text = request.text()
                     except:
                         pass
                     if strtype == 'NotFound':
@@ -203,6 +234,7 @@ class SiteErrorLog (SimpleItem):
                     'userid': userid,
                     'url': url,
                     'req_html': req_html,
+                    'req_text': req_text,
                     })
 
                 cleanup_lock.acquire()

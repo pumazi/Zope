@@ -114,6 +114,22 @@ class SiteErrorLogTests(unittest.TestCase):
         # log entries
         self.assertEquals(len(sel_ob.getLogEntries()), previous_log_length)
 
+    def testShowAsText(self):
+        elog = self.app.error_log
+        # Create a predictable error
+        try:
+            raise AttributeError, "DummyAttribute"
+        except AttributeError:
+            info = sys.exc_info()
+            elog.raising(info)
+
+        entry = elog.getLogEntries()[0]['id']
+        self.app.REQUEST.set('id', entry)
+        
+        # Shouldn't raise an Exception and return a string
+        text = elog.showEntryText(elog, REQUEST=self.app.REQUEST)
+        self.assert_(isinstance(text, str))
+
     def testCleanup(self):
         # Need to make sure that the __error_log__ hook gets cleaned up
         self.app._delObject('error_log')

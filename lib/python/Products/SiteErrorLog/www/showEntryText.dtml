@@ -1,0 +1,33 @@
+<dtml-call "REQUEST.RESPONSE.setHeader('content-type', 'text/plain')">Exception Log File
+
+<dtml-let entry="getLogEntryById(REQUEST.get('id'))">
+
+General Information
+-------------------
+
+Time
+  <dtml-var "DateTime(entry['time'])">
+
+User Name (User Id)
+  <dtml-var "entry['username']"> (<dtml-var "entry['userid']">)
+  
+Request URL
+  <dtml-var "entry['url']">
+  
+Exception Type
+  <dtml-var "entry['type']">
+
+Exception Value
+  <dtml-var "entry['value']">
+
+Traceback
+---------
+
+<dtml-var "entry['tb_text']">
+
+REQUEST
+-------
+
+<dtml-var "entry['req_text']"> 
+
+</dtml-let>

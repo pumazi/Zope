@@ -28,6 +28,10 @@ Zope Changes
 
     Features added
 
+      - The SiteErrorLog now supports displaying the exception page as pure
+        text. Additionally you can save individual error log entries as a text
+        file in your CLIENT_HOME (usually INSTANCE_HOME/var) directory.
+
       - FTPServer: a RNFR (rename from) request is now being responded
         with a 550 error code if the source file does not exist
 

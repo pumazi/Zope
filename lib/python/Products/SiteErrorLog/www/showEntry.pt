@@ -3,13 +3,18 @@
 
 <h3>Exception traceback</h3>
 
+<div tal:define="entry python:container.getLogEntryById(request.get('id'))">
+
 <p>
-<form action="manage_main" method="GET">
-<input type="submit" name="submit" value=" Return to log " />
+<form tal:attributes="action here/absolute_url" method="GET">
+<input type="hidden" name="id" tal:attributes="value entry/id"/>
+<input type="submit" name="manage_main:action" value=" Return to log " />
+<input type="submit" name="showEntryText:action" value=" Show as text " 
+    tal:condition="entry"/>
+<input type="submit" name="saveEntry:action" value=" Store Exception on Server " 
+    tal:condition="entry"/>
 </form>
 </p>
-
-<div tal:define="entry python:container.getLogEntryById(request.get('id'))">
 
 <em tal:condition="not:entry">
 The specified log entry was not found.  It may have expired.
