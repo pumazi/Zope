@@ -349,7 +349,7 @@ class RoleManager(ExtensionClass.Base, PermissionMapping.RoleManager):
             if r not in local_roles:
                 local_roles.append(r)
         dict[userid] = local_roles
-        self._p_changed=True
+        self._p_changed=True # No reassign -- might be a complex object
         if REQUEST is not None:
             stat='Your changes have been saved.'
             return self.manage_listLocalRoles(self, REQUEST, stat=stat)
@@ -362,7 +362,7 @@ class RoleManager(ExtensionClass.Base, PermissionMapping.RoleManager):
         if dict is None:
             self.__ac_local_roles__ = dict = {}
         dict[userid]=roles
-        self._p_changed=True
+        self._p_changed=True # No reassign -- might be a complex object
         if REQUEST is not None:
             stat='Your changes have been saved.'
             return self.manage_listLocalRoles(self, REQUEST, stat=stat)
@@ -375,7 +375,7 @@ class RoleManager(ExtensionClass.Base, PermissionMapping.RoleManager):
         for userid in userids:
             if dict.has_key(userid):
                 del dict[userid]
-        self._p_changed=True
+        self._p_changed=True # No reassign -- might be a complex object
         if REQUEST is not None:
             stat='Your changes have been saved.'
             return self.manage_listLocalRoles(self, REQUEST, stat=stat)
