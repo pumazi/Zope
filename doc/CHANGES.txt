@@ -57,7 +57,11 @@ Zope Changes
         text/<foo> types
 
     Bugs fixed
- 
+
+      - Forward-ported guarded_getattr fix: Restored ability to aquire
+        "through" unprotected contexts, broken through overzealous
+        cleanup in Zope 2.7.3.
+
       - Fixed Shared.DC.ZRDB.Results to behave with the new-style
         ExtensionClass. Added a test.
 

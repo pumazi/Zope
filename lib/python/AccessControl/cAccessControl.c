@@ -2176,17 +2176,23 @@ guarded_getattr(PyObject *inst, PyObject *name, PyObject *default_,
             }
         }
 
-      /*
-        if validate(inst, inst, name, v):
-            return v
-       */
-      validate=callfunction4(validate, inst, inst, name, v);
-      if (validate==NULL) goto err;
-      i=PyObject_IsTrue(validate);
-      Py_DECREF(validate);
-      if (i < 0) goto err;
-      if (i > 0) return v;
-      
+      /* 
+        # See if we can get the value doing a filtered acquire.
+        # aq_acquire will either return the same value as held by
+        # v or it will return an Unauthorized raised by validate.
+        validate = SecurityManagement.getSecurityManager().validate
+        aq_acquire(inst, name, aq_validate, validate)
+        
+        return v
+      */
+
+      t = aq_Acquire(inst, name, aq_validate, validate, 1, NULL, 0);
+      if (t == NULL)
+        return NULL;
+      Py_DECREF(t);
+
+      return v;
+            
       unauthErr(name, v);
     err:
       Py_DECREF(v);
@@ -2378,4 +2384,3 @@ void initcAccessControl(void) {
 	Py_DECREF(module);
 	module = NULL;
 }
-

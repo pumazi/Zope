@@ -4,7 +4,7 @@ from mimetools import Message
 from multifile import MultiFile
 
 import transaction
-from AccessControl import SecurityManager
+from AccessControl import SecurityManager, Unauthorized
 from AccessControl.SecurityManagement import newSecurityManager
 from AccessControl.SecurityManagement import noSecurityManager
 from Acquisition import Implicit
@@ -281,7 +281,9 @@ class _SensitiveSecurityPolicy:
         self._lambdas = ( validate_lambda, checkPermission_lambda )
 
     def validate( self, *args, **kw ):
-        return self._lambdas[ 0 ]( *args, **kw )
+        if self._lambdas[ 0 ]( *args, **kw ):
+            return 1
+        raise Unauthorized
 
     def checkPermission( self, *args, **kw ) :
         return self._lambdas[ 1 ]( *args, **kw )

@@ -17,6 +17,9 @@ import os
 import string
 
 from Acquisition import aq_base
+from Acquisition import aq_parent
+from Acquisition import aq_inner
+from Acquisition import aq_acquire
 from ExtensionClass import Base
 from zLOG import LOG, PROBLEM
 
@@ -553,7 +556,13 @@ def guarded_getattr(inst, name, default=_marker):
             # No veto, so we can return
             return v
 
+
+        # See if we can get the value doing a filtered acquire.
+        # aq_acquire will either return the same value as held by
+        # v or it will return an Unauthorized raised by validate.
         validate = SecurityManagement.getSecurityManager().validate
-        if validate(inst, inst, name, v):
-            return v
+        aq_acquire(inst, name, aq_validate, validate)
+        
+        return v
+        
     raise Unauthorized, name
