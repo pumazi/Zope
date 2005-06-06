@@ -400,6 +400,33 @@ class TestWrappingUserFolder(ZopeTestCase.ZopeTestCase):
         self.failUnless(user.aq_parent.__class__.__name__, 'WrappingUserFolder')
         self.failUnless(user.aq_parent.aq_parent.__class__.__name__, 'Folder')
 
+import Products, Zope2, connections
+class TestProductInstall(ZopeTestCase.ZopeTestCase):
+    
+    _setup_fixture = 0
+    
+    def testInstallOnNonRunningZope(self):
+        # Make sure ZCatalog is not installed by default:
+        meta_types = [p['name'] for p in Products.meta_types]
+        self.failIf('ZCatalog' in meta_types)
+        ZopeTestCase.ZopeLite.installProduct('ZCatalog', quiet=0)
+        # Make sure ZCatalog is installed now:
+        meta_types = [p['name'] for p in Products.meta_types]
+        self.failUnless('ZCatalog' in meta_types)
+        
+    def testInstallOnRunningZope(self):
+        import pdb;pdb.set_trace()
+        Zope2.startup() # Installs everything
+        # Make sure ZCatalog is installed by default:
+        meta_types = [p['name'] for p in Products.meta_types]
+        self.failUnless('MailHost' in meta_types)
+        import pdb;pdb.set_trace()
+        # Now, remove ZCatalog from the product list
+        ZopeTestCase.ZopeLite.installProduct('MailHost')
+        # Make sure ZCatalog is installed now:
+        self.failIf('MailHost' in products.objectIds())
+        
+        
 
 def test_suite():
     from unittest import TestSuite, makeSuite
@@ -407,6 +434,7 @@ def test_suite():
     suite.addTest(makeSuite(TestZopeTestCase))
     suite.addTest(makeSuite(TestPlainUserFolder))
     suite.addTest(makeSuite(TestWrappingUserFolder))
+    #suite.addTest(makeSuite(TestProductInstall))
     return suite
 
 if __name__ == '__main__':

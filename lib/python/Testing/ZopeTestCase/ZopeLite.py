@@ -115,44 +115,47 @@ def _apply_patches():
     App.ProductContext.ProductContext.registerHelpTitle = null_register_title
     def null_register_help(self,directory='',clear=1,title_re=None): pass
     App.ProductContext.ProductContext.registerHelp = null_register_help
-
-# Do not patch a running Zope
-if not Zope2._began_startup:
-    _apply_patches()
-
+    
 # Allow test authors to install Zope products into the test environment. Note
 # that installProduct() must be called at module level -- never from tests.
-from OFS.Application import get_folder_permissions, get_products, \
-     install_product, _installedProducts
+from OFS.Application import get_folder_permissions, get_products, install_product
 from OFS.Folder import Folder
 import Products
 
 _theApp = Zope2.app()
+_installedProducts = {}
 
 def hasProduct(name):
     '''Checks if a product can be found along Products.__path__'''
     return name in [n[1] for n in get_products()]
 
-def installProduct(name, quiet=0):
-    '''Installs a Zope product.'''
-    start = time.time()
-    meta_types = []
-    if not _installedProducts.has_key(name):
-        for priority, product_name, index, product_dir in get_products():
-            if product_name == name:
-                if not quiet: _print('Installing %s ... ' % product_name)
-                # We want to fail immediately if a product throws an exception
-                # during install, so we set the raise_exc flag.
-                install_product(_theApp, product_dir, product_name, meta_types,
-                                get_folder_permissions(), raise_exc=1)
-                _installedProducts[product_name] = 1
-                Products.meta_types = Products.meta_types + tuple(meta_types)
-                Globals.default__class_init__(Folder)
-                if not quiet: _print('done (%.3fs)\n' % (time.time() - start))
-                break
-        else:
-            if name != 'SomeProduct':   # Ignore the skeleton tests :-P
-                if not quiet: _print('Installing %s ... NOT FOUND\n' % name)
+# Do not patch a running Zope
+if not Zope2._began_startup:
+    _apply_patches()
+
+    def installProduct(name, quiet=0):
+        '''Installs a Zope product.'''
+        start = time.time()
+        meta_types = []
+        if not _installedProducts.has_key(name):
+            for priority, product_name, index, product_dir in get_products():
+                if product_name == name:
+                    if not quiet: _print('Installing %s ... ' % product_name)
+                    # We want to fail immediately if a product throws an exception
+                    # during install, so we set the raise_exc flag.
+                    install_product(_theApp, product_dir, product_name, meta_types,
+                                    get_folder_permissions(), raise_exc=1)
+                    _installedProducts[product_name] = 1
+                    Products.meta_types = Products.meta_types + tuple(meta_types)
+                    Globals.default__class_init__(Folder)
+                    if not quiet: _print('done (%.3fs)\n' % (time.time() - start))
+                    break
+            else:
+                if name != 'SomeProduct':   # Ignore the skeleton tests :-P
+                    if not quiet: _print('Installing %s ... NOT FOUND\n' % name)
+else:
+    def installProduct(name, quiet=0):
+        return
 
 def _load_control_panel():
     # Loading the Control_Panel of an existing ZODB may take
