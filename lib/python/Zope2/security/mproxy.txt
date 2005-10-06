@@ -1,0 +1,33 @@
+Mild proxies
+============
+
+Mild proxies (mproxies) are security proxies that are designed to
+provide backward compatibility for Zope 2 while eintrocusing a more
+robust protection system.  They differ from normal security proxies in
+that they remove mproxies from arguments passed when calling the
+procies.
+
+    >>> from Zope2.security.mproxy import MProxy
+    >>> from zope.security import checker 
+    >>> def f(*args):
+    ...     return [type(a).__name__ for a in args]
+
+    >>> class C(object):
+    ...     pass
+
+    >>> call_checker = checker.NamesChecker(['__call__'])
+
+    >>> MProxy(f, call_checker)(MProxy(C(), call_checker))
+    ['C']
+
+Otherwise, mproxies are like regular security proxies:
+
+    >>> from zope.security import proxy
+    >>> isinstance(MProxy(C(), call_checker), proxy.Proxy)
+    True
+    >>> MProxy(C(), checker.NamesChecker([]))()
+    ... # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+    ...
+    ForbiddenAttribute: ('__call__', ...)
+

@@ -425,6 +425,12 @@ ext_modules = [
                  "zope/proxy/_zope_proxy_proxy.c",
                  ]),
 
+    # Zope2.security
+    Extension("Zope2.security._Zope2_security_mproxy",
+              ["Zope2/security/_Zope2_security_mproxy.c"],
+              ),
+
+
     ]
 
 # We're using the module docstring as the distutils descriptions.
