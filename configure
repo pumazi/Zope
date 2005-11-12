@@ -2,30 +2,29 @@
 
 # Zope configure script
 # $Id$
-# $Rev$
+
 
 #####################################################################
 #                    BEGIN EDITABLE PARAMETERS                      #
 #####################################################################
 
 # Place the Zope major version number below.
-ZOPE_VERS=2.8
+ZOPE_VERS=2.9
 
 # Order a list of "preferred" python version numbers (as returned by
 # sys.version) below in "best" to "worst" order.
 # Up to four preferred python versions are allowed.
-# below
-PREFERRED="2.3.3 2.3.4"
+PREFERRED="2.4.2"
 
 # Order a list of "acceptable" python version numbers (as returned by
 # sys.version) below in "best" to "worst" order, not including the
 # preferred version.  Up to six acceptable python versions are allowed.
 # Do not include preferred version numbers in this list!
-ACCEPTABLE="2.3.2 2.3.1 2.3"
+ACCEPTABLE="2.4.1"
 
-# provide the executable names for all the acceptable versions
-# (and the preferred versions) below
-EXENAMES="python python2 python2.3"
+# Provide the executable names for all the acceptable versions
+# (and the preferred versions) below.
+EXENAMES="python python2 python2.4"
 
 #####################################################################
 #                    END EDITABLE PARAMETERS                        #
@@ -41,8 +40,7 @@ usage()
 {
     echo
     echo "configure [--help] [--quiet] [--with-python=path] [--prefix=path] "
-    echo "          [--build-base=path] [--ignore-largefile] [--ignore-zlib]"
-    echo "          [--optimize]"
+    echo "          [--ignore-largefile] [--ignore-zlib] [--optimize]"
     echo
     echo " Creates a Makefile suitable for building and installing Zope"
     echo
@@ -51,7 +49,6 @@ usage()
     echo "  --quiet             suppress nonessential output"
     echo "  --with-python       specify a path to a Python interpreter to use"
     echo "  --prefix            specify an installation path for binary data"
-    echo "  --build-base        specify a temporary path for build files"
     echo "  --ignore-largefile  ignore large file support warnings"
     echo "  --ignore-expat      ignore warnings about expat/pyexpat"
     echo "  --ignore-zlib       ignore warnings about zlib"
@@ -151,8 +148,10 @@ get_python() {
          [ -z "$ACC4" ] && [ -z "$ACC5" ] && [ -z "$ACC6" ] ; then
         out ""
         out "  No suitable Python version found.  You should install"
-        out "  python with a preferred version ($PREFERRED) before continuing."
-        out "  Versions $ACCEPTABLE also work, but not as optimally."
+        out "  Python with a preferred version ($PREFERRED) before continuing."
+        if [ "$ACCEPTABLE" ]; then
+            out "  Versions $ACCEPTABLE also work, but not as optimally."
+        fi
         exit 1
     else
         if   [ -n "$ACC1" ]; then

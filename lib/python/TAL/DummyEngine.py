@@ -22,18 +22,6 @@ from TALDefs import NAME_RE, TALESError, ErrorInfo
 from ITALES import ITALESCompiler, ITALESEngine
 from DocumentTemplate.DT_Util import ustr
 
-IDomain = None
-if sys.modules.has_key('Zope'):
-    try:
-        from Zope.I18n.ITranslationService import ITranslationService
-        from Zope.I18n.IDomain import IDomain
-    except ImportError:
-        pass
-if IDomain is None:
-    # Before 2.7, or not in Zope
-    class ITranslationService: pass
-    class IDomain: pass
-
 class _Default:
     pass
 Default = _Default()
@@ -235,7 +223,6 @@ class Iterator:
         return 1
 
 class DummyDomain:
-    __implements__ = IDomain
 
     def translate(self, msgid, mapping=None, context=None,
                   target_language=None, default=None):
@@ -247,8 +234,10 @@ class DummyDomain:
         # things back together.
 
         # simulate an unknown msgid by returning None
+        text = msgid
         if msgid == "don't translate me":
-            text = default
+            if default is not None:
+                text = default
         else:
             text = msgid.upper()
 
@@ -258,7 +247,6 @@ class DummyDomain:
         return cre.sub(repl, text)
 
 class DummyTranslationService:
-    __implements__ = ITranslationService
 
     def translate(self, domain, msgid, mapping=None, context=None,
                   target_language=None, default=None):
