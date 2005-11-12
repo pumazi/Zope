@@ -77,7 +77,7 @@ get_python() {
         IFS="$OLDIFS"
         for EXECUTABLE in $EXENAMES; do
             FULL="$DIR/$EXECUTABLE"
-            if [ -x "$FULL" ]; then
+            if [ -x "$FULL" -a ! -d "$FULL" ]; then
                 CMD="import string,sys;a=string.split(sys.version)[0]"
 		# Strip trailing + from version number
 		CMD="$CMD;a=(a[-1]=='+')and(a[:-1])or(a);print a"
@@ -86,7 +86,6 @@ get_python() {
 		i=0;
                 for P in $PREFERRED; do
 		    i=`expr $i + 1`
-		    echo "XXX I: $i"
 		    for SLOT in $PREF_FOUNDLIST; do
 			if [ $SLOT -eq $i ]; then
                             # slot "i" already populated.  
@@ -110,7 +109,6 @@ get_python() {
                     i=0;
                     for ACC in $ACCEPTABLE; do
                         i=`expr $i + 1`
-			echo "I XXX $i"
 			for SLOT in $FOUNDLIST; do
                             if [ $SLOT -eq $i ]; then
                                 # slot "i" already populated.  This means we've
