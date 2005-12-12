@@ -12,6 +12,7 @@
 ##############################################################################
 __version__='$Revision$'[11:-2]
 
+import sys
 import transaction
 from zope.event import notify
 from zope.interface import implements
@@ -19,6 +20,8 @@ from zope.publisher.interfaces import IRequest, IPublication
 from zope.publisher.interfaces import NotFound, IPublicationRequest
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
+from zope.app.publication.interfaces import IBeforeTraverseEvent
+from zope.app.testing import ztapi
 
 from ZPublisher.Publish import Retry
 from ZPublisher.Publish import get_module_info, call_object
@@ -42,7 +45,7 @@ class ZopePublication(object):
         # Fetch module info to be backwards compatible with 'bobo'
         # and Zope 2.
         (self.bobo_before, self.bobo_after,
-         self.application, self.realm, self.debug_mode,
+         self.root, self.realm, self.debug_mode,
          self.err_hook, self.validated_hook,
          self.transactions_manager) = get_module_info(self.module_name)
 
@@ -72,7 +75,7 @@ class ZopePublication(object):
 
     def getApplication(self, request):
         # Return the application object for the given module.
-        ob = self.application
+        ob = self.root
 
         # Now, some code from ZPublisher.BaseRequest:
         # If the top object has a __bobo_traverse__ method, then use it
@@ -151,9 +154,9 @@ class ZopePublication(object):
             except Retry:
                 if not retry_allowed:
                     return self.err_hook(object, request,
-                                         exc_info[0],
-                                         exc_info[1],
-                                         exc_info[2],
+                                         sys.exc_info()[0],
+                                         sys.exc_info()[1],
+                                         sys.exc_info()[2],
                                          )
         finally:
             self._abort()
@@ -208,11 +211,22 @@ class ZopePublication(object):
                     TypeError, AttributeError):
                 raise NotFound(ob, name)
 
-_publication = None
+_publications = {}
 def get_publication(module_name=None):
-    global _publication
     if module_name is None:
         module_name = "Zope2"
-    if _publication is None:
-        _publication = ZopePublication(db=None, module_name=module_name)
-    return _publication
+    if not _publications.has_key(module_name):
+        _publications[module_name] = ZopePublication(db=None,
+                                                     module_name=module_name)
+    return _publications[module_name]
+
+def bptSubscriber(event):
+    ob = event.object
+    request = event.request
+    bpth = getattr(ob, '__before_publishing_traverse__', None)
+    if bpth is not None:
+        bpth(ob, request)
+
+# XXX Move to zcml.
+ztapi.subscribe([IBeforeTraverseEvent], None, bptSubscriber)
+

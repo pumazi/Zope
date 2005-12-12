@@ -91,6 +91,9 @@ class Request:
     def __init__(self):
         self.response = Response()
 
+    def setPublication(self, publication):
+        self.publication = publication
+
     def processInputs(self):
         pass
 

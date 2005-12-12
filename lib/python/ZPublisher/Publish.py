@@ -105,7 +105,7 @@ def publish(request, module_name, after_list, debug=0,
         # Get a nice clean path list:
         path = request_get('PATH_INFO').strip()
 
-        request['PARENTS'] = parents = [publication.application]
+        request['PARENTS'] = parents = [publication.root]
 
         # Traverse to the requested path.
         object = request.traverse(path, validated_hook=validated_hook)
@@ -138,29 +138,24 @@ def publish(request, module_name, after_list, debug=0,
                 getattr(cl,'__name__',cl), val,
                 debug_mode and compact_traceback()[-1] or ''))
 
-            if parents:
-                parents = parents[0]
+        if parents:
+            parents = parents[0]
 
-            err_handled = publication.handleException(
-                parents, request, sys.exc_info(),
-                retry_allowed=request.supports_retry())
+        err_handled = publication.handleException(
+            parents, request, sys.exc_info(),
+            retry_allowed=request.supports_retry())
 
-            # XXX What if 'err_hook' returns None?
-            if err_handled is not None:
-                return err_handled
+        # XXX What if 'err_hook' returns None?
+        if err_handled is not None:
+            return err_handled
 
-            # Only reachable if Retry is raised and request supports retry.
-            newrequest = request.retry()
-            request.close()  # Free resources held by the request.
-            try:
-                return publish(newrequest, module_name, after_list, debug)
-            finally:
-                newrequest.close()
-
-        else:
-            publication._abort()
-            raise
-
+        # Only reachable if Retry is raised and request supports retry.
+        newrequest = request.retry()
+        request.close()  # Free resources held by the request.
+        try:
+            return publish(newrequest, module_name, after_list, debug)
+        finally:
+            newrequest.close()
 
 def publish_module_standard(module_name,
                    stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr,

@@ -81,8 +81,13 @@ class BaseRequest:
         if other is None: other=kw
         else: other.update(kw)
         self.other = other
-        # Publication will be set by ZPublisher.Publish, publish().
-        self.publication = None
+        self.environ = {}
+        # Publication will be overriden by ZPublisher.Publish,
+        # publish(), we assume that by default it's the "Zope2"
+        # module. This is done so that tests using BaseRequest
+        # directly don't break.
+        from ZPublisher.Publication import get_publication
+        self.publication = get_publication(module_name="Zope2")
 
     def setPublication(self, publication):
         self.publication = publication
@@ -238,10 +243,14 @@ class BaseRequest:
 
         URL=request['URL']
         parents = request['PARENTS']
+        object = parents[-1]
         del parents[:]
 
         if not path and not method:
             return response.forbiddenError(self['URL'])
+
+        if self.publication.root is not object:
+            self.publication.root = object
 
         object = self.publication.getApplication(self)
         roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
