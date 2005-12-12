@@ -59,67 +59,70 @@ def set_default_authentication_realm(realm):
     _default_realm = realm
 
 def publish(request, module_name, after_list, debug=0,
-            # Optimize:
+            # Optimize (now unused).
             call_object=call_object,
             missing_name=missing_name,
             dont_publish_class=dont_publish_class,
             mapply=mapply,
             ):
 
-    (bobo_before, bobo_after, object, realm, debug_mode, err_hook,
-     validated_hook, transactions_manager)= get_module_info(module_name)
+    # We assume the publication object returned is the one in
+    # ZPublisher.Publication here so we don't bother using accessors
+    # and poke directly into the variables.
+    from ZPublisher.Publication import get_publication
+    publication = get_publication(module_name)
+    request.setPublication(publication)
 
-    parents=None
-    response=None
+    # BBB: bobo_after hooks are called from 'publish_module_standard'
+    if publication.bobo_after:
+        after_list[0] = bobo_after
+
+    parents = None
+    response = None
 
     try:
         request.processInputs()
 
-        request_get=request.get
-        response=request.response
+        request_get = request.get
+        response = request.response
 
         # First check for "cancel" redirect:
         if request_get('SUBMIT','').strip().lower()=='cancel':
-            # XXX Deprecate this, the Zope 2+3 publisher won't support it.
-            cancel=request_get('CANCEL_ACTION','')
+            # XXX Deprecate this, the Zope 2+3 publication won't support it.
+            cancel = request_get('CANCEL_ACTION','')
             if cancel:
                 raise Redirect, cancel
 
-        after_list[0]=bobo_after
-        if debug_mode:
-            response.debug_mode=debug_mode
+        if publication.debug_mode:
+            response.debug_mode = publication.debug_mode
         if realm and not request.get('REMOTE_USER',None):
-            response.realm=realm
+            response.realm = publication.realm
 
-        if bobo_before is not None:
-            bobo_before()
+        # Do any pre-traversal setup, like starting a new transaction.
+        publication.beforeTraversal(request)
 
         # Get a nice clean path list:
-        path=request_get('PATH_INFO').strip()
+        path = request_get('PATH_INFO').strip()
 
-        request['PARENTS']=parents=[object]
+        request['PARENTS'] = parents = [publication.application]
 
-        if transactions_manager:
-            transactions_manager.begin()
+        # Traverse to the requested path.
+        object = request.traverse(path, validated_hook=validated_hook)
 
-        object=request.traverse(path, validated_hook=validated_hook)
+        # After traversal hook, usually annotate transaction
+        publication.afterTraversal(request, object)
 
-        if transactions_manager:
-            transactions_manager.recordMetaData(object, request)
-
-        result=mapply(object, request.args, request,
-                      call_object,1,
-                      missing_name,
-                      dont_publish_class,
-                      request, bind=1)
+        # Now call the traversed object.
+        result = publication.callObject(request, object)
 
         if result is not response:
             response.setBody(result)
 
-        if transactions_manager:
-            transactions_manager.commit()
+        # Call any afterCall hooks, usually commits the transaction
+        publication.afterCall(request, object)
 
         return response
+
     except:
 
         # DM: provide nicer error message for FTP
@@ -134,29 +137,19 @@ def publish(request, module_name, after_list, debug=0,
                 getattr(cl,'__name__',cl), val,
                 debug_mode and compact_traceback()[-1] or ''))
 
-        if err_hook is not None:
             if parents:
-                parents=parents[0]
-            try:
-                try:
-                    return err_hook(parents, request,
-                                    sys.exc_info()[0],
-                                    sys.exc_info()[1],
-                                    sys.exc_info()[2],
-                                    )
-                except Retry:
-                    if not request.supports_retry():
-                        return err_hook(parents, request,
-                                        sys.exc_info()[0],
-                                        sys.exc_info()[1],
-                                        sys.exc_info()[2],
-                                        )
-            finally:
-                if transactions_manager:
-                    transactions_manager.abort()
+                parents = parents[0]
+
+            err_handled = publication.handleException(
+                parents, request, sys.exc_info(),
+                retry_allowed=request.supports_retry())
+
+            # XXX What if 'err_hook' returns None?
+            if err_handled is not None:
+                return err_handled
 
             # Only reachable if Retry is raised and request supports retry.
-            newrequest=request.retry()
+            newrequest = request.retry()
             request.close()  # Free resources held by the request.
             try:
                 return publish(newrequest, module_name, after_list, debug)
@@ -164,8 +157,7 @@ def publish(request, module_name, after_list, debug=0,
                 newrequest.close()
 
         else:
-            if transactions_manager:
-                transactions_manager.abort()
+            publication._abort()
             raise
 
 
@@ -322,7 +314,7 @@ _pstat=None
 def install_profiling(filename):
     global _pfile
     _pfile = filename
-    
+
 def pm(module_name, stdin, stdout, stderr,
        environ, debug, request, response):
     try:

@@ -20,7 +20,6 @@ from urllib import quote
 from zope.publisher.interfaces import NotFound
 
 from zExceptions import Forbidden
-from ZPublisher.Publication import get_publication
 
 UNSPECIFIED_ROLES=''
 
@@ -81,8 +80,12 @@ class BaseRequest:
         """
         if other is None: other=kw
         else: other.update(kw)
-        self.other=other
-        self.publication = get_publication()
+        self.other = other
+        # Publication will be set by ZPublisher.Publish, publish().
+        self.publication = None
+
+    def setPublication(self, publication):
+        self.publication = publication
 
     def close(self):
         self.other.clear()

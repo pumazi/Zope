@@ -99,12 +99,9 @@ class ZopePublication(object):
 
     def afterCall(self, request, ob):
         # Last part of ZPublisher.Publish.{publish, publish_module_standard},
-        # commit the transaction and call 'bobo_after' hook if one was
-        # provided.
+        # commit the transaction.
         if self.transactions_manager:
             self.transactions_manager.commit()
-        if self.bobo_after is not None:
-            self.bobo_after()
 
     def endRequest(self, request, ob):
         # End the request the Zope 3-way, by firing an event.
@@ -122,11 +119,14 @@ class ZopePublication(object):
         if self.transactions_manager:
             self.transactions_manager.recordMetaData(ob, request)
 
+    def _abort(self):
+        if self.transactions_manager:
+            self.transactions_manager.abort()
+
     def handleException(self, object, request, exc_info, retry_allowed=True):
         # Some exception handling from ZPublisher.Publish.publish().
         if self.err_hook is None:
-            if transactions_manager:
-                transactions_manager.abort()
+            self._abort()
             raise
 
         # If an err_hook was registered, use it.
@@ -145,8 +145,7 @@ class ZopePublication(object):
                                          exc_info[2],
                                          )
         finally:
-            if self.transactions_manager:
-                self.transactions_manager.abort()
+            self._abort()
 
         # XXX After this code, in ZPublisher.Publish.publish(), Zope 2
         # does a 'Retry' if a 'Retry' exception happens and the
@@ -199,8 +198,10 @@ class ZopePublication(object):
                 raise NotFound(ob, name)
 
 _publication = None
-def get_publication(module_name):
+def get_publication(module_name=None):
     global _publication
+    if module_name is None:
+        module_name = "Zope2"
     if _publication is None:
-        _publication = ZopePublication(db=None, module_name="Zope2")
+        _publication = ZopePublication(db=None, module_name=module_name)
     return _publication
