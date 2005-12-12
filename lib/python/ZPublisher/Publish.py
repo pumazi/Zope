@@ -80,6 +80,7 @@ def publish(request, module_name, after_list, debug=0,
 
         # First check for "cancel" redirect:
         if request_get('SUBMIT','').strip().lower()=='cancel':
+            # XXX Deprecate this, the Zope 2+3 publisher won't support it.
             cancel=request_get('CANCEL_ACTION','')
             if cancel:
                 raise Redirect, cancel
