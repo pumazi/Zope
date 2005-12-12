@@ -20,8 +20,6 @@ from zope.publisher.interfaces import IRequest, IPublication
 from zope.publisher.interfaces import NotFound, IPublicationRequest
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
-from zope.app.publication.interfaces import IBeforeTraverseEvent
-from zope.app.testing import ztapi
 
 from ZPublisher.Publish import Retry
 from ZPublisher.Publish import get_module_info, call_object
@@ -59,8 +57,12 @@ class ZopePublication(object):
             self.transactions_manager.begin()
 
     def callTraversalHooks(self, request, ob):
-        # Call __before_publishing_traverse__ hooks the Zope 3-way by
-        # firing an event.
+        # Call __before_publishing_traverse__ hooks
+        bpth = getattr(ob, '__before_publishing_traverse__', None)
+        if bpth is not None:
+            bpth(ob, request)
+
+        # And then fire an event
         notify(BeforeTraverseEvent(ob, request))
 
     def afterTraversal(self, request, ob):
@@ -219,14 +221,3 @@ def get_publication(module_name=None):
         _publications[module_name] = ZopePublication(db=None,
                                                      module_name=module_name)
     return _publications[module_name]
-
-def bptSubscriber(event):
-    ob = event.object
-    request = event.request
-    bpth = getattr(ob, '__before_publishing_traverse__', None)
-    if bpth is not None:
-        bpth(ob, request)
-
-# XXX Move to zcml.
-ztapi.subscribe([IBeforeTraverseEvent], None, bptSubscriber)
-
