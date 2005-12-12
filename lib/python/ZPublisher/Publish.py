@@ -95,8 +95,9 @@ def publish(request, module_name, after_list, debug=0,
 
         if publication.debug_mode:
             response.debug_mode = publication.debug_mode
-        if realm and not request.get('REMOTE_USER',None):
+        if publication.realm and not request.get('REMOTE_USER',None):
             response.realm = publication.realm
+        validated_hook = publication.validated_hook
 
         # Do any pre-traversal setup, like starting a new transaction.
         publication.beforeTraversal(request)

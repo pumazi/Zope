@@ -90,8 +90,8 @@ class BaseRequest:
     def close(self):
         self.other.clear()
         self._held = None
-        self.publication = None
         self.publication.endRequest(self, None)
+        self.publication = None
 
     def processInputs(self):
         """Do any input processing that could raise errors

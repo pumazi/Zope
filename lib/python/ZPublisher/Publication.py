@@ -16,7 +16,7 @@ import transaction
 from zope.event import notify
 from zope.interface import implements
 from zope.publisher.interfaces import IRequest, IPublication
-from zope.publisher.interfaces import NotFound
+from zope.publisher.interfaces import NotFound, IPublicationRequest
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
 
@@ -93,7 +93,18 @@ class ZopePublication(object):
 
     def callObject(self, request, ob):
         # Call the object the same way it's done in Zope 2.
-        return mapply(ob, request.getPositionalArguments(),
+
+        # XXX Check if it's a Zope 3 or a Zope 2 request. Might not be
+        # true because someone (Five?) is saying that the Zope 2
+        # request implements IPublicationRequest so we check for the
+        # method name. Yuck.
+        if (IPublicationRequest.providedBy(request) and
+            hasattr(request, 'getPositionalArguments')):
+            args = request.getPositionalArguments()
+        else:
+            # It's a Zope 2 request.
+            args = request.args
+        return mapply(ob, args,
                       request, call_object, 1, missing_name,
                       dont_publish_class, request, bind=1)
 
