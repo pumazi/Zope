@@ -14,12 +14,13 @@
 
 $Id$
 """
-from urllib import quote
-import xmlrpc
-from zExceptions import Forbidden
 
-from zope.event import notify
-from zope.app.publication.interfaces import EndRequestEvent
+import xmlrpc
+from urllib import quote
+from zope.publisher.interfaces import NotFound
+
+from zExceptions import Forbidden
+from ZPublisher.Publication import get_publication
 
 UNSPECIFIED_ROLES=''
 
@@ -81,11 +82,13 @@ class BaseRequest:
         if other is None: other=kw
         else: other.update(kw)
         self.other=other
+        self.publication = get_publication()
 
     def close(self):
         self.other.clear()
-        self._held=None
-        notify(EndRequestEvent(None, self))
+        self._held = None
+        self.publication = None
+        self.publication.endRequest(self, None)
 
     def processInputs(self):
         """Do any input processing that could raise errors
@@ -155,7 +158,7 @@ class BaseRequest:
 
     def __contains__(self, key):
         return self.has_key(key)
-    
+
     def keys(self):
         keys = {}
         keys.update(self.common)
@@ -231,28 +234,14 @@ class BaseRequest:
             no_acquire_flag=0
 
         URL=request['URL']
-        parents=request['PARENTS']
-        object=parents[-1]
+        parents = request['PARENTS']
         del parents[:]
-
-        roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
-
-        # if the top object has a __bobo_traverse__ method, then use it
-        # to possibly traverse to an alternate top-level object.
-        if hasattr(object,'__bobo_traverse__'):
-            try:
-                object=object.__bobo_traverse__(request)
-                roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
-            except: pass
 
         if not path and not method:
             return response.forbiddenError(self['URL'])
 
-        # Traverse the URL to find the object:
-        if hasattr(object, '__of__'):
-            # Try to bind the top-level object to the request
-            # This is how you get 'self.REQUEST'
-            object=object.__of__(RequestContainer(REQUEST=request))
+        object = self.publication.getApplication(self)
+        roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
         parents.append(object)
 
         steps=self.steps
@@ -270,9 +259,7 @@ class BaseRequest:
             # We build parents in the wrong order, so we
             # need to make sure we reverse it when we're doe.
             while 1:
-                bpth = getattr(object, '__before_publishing_traverse__', None)
-                if bpth is not None:
-                    bpth(object, self)
+                self.publication.callTraversalHooks(self, object)
 
                 path = request.path = request['TraversalRequestNameStack']
                 # Check for method:
@@ -318,47 +305,15 @@ class BaseRequest:
                           "Object name begins with an underscore at: %s" % URL)
                     else: return response.forbiddenError(entry_name)
 
-                if hasattr(object,'__bobo_traverse__'):
-                    try:
-                        subobject=object.__bobo_traverse__(request,entry_name)
-                        if type(subobject) is type(()) and len(subobject) > 1:
-                            # Add additional parents into the path
-                            parents[-1:] = list(subobject[:-1])
-                            object, subobject = subobject[-2:]
-                    except (AttributeError, KeyError):
-                        if debug_mode:
-                            return response.debugError(
-                                "Cannot locate object at: %s" % URL)
-                        else:
-                            return response.notFoundError(URL)
-                else:
-                    try:
-                        # Note - no_acquire_flag is necessary to support
-                        # things like DAV.  We have to make sure
-                        # that the target object is not acquired
-                        # if the request_method is other than GET
-                        # or POST. Otherwise, you could never use
-                        # PUT to add a new object named 'test' if
-                        # an object 'test' existed above it in the
-                        # heirarchy -- you'd always get the
-                        # existing object :(
-
-                        if (no_acquire_flag and len(path) == 0 and
-                            hasattr(object, 'aq_base')):
-                            if hasattr(object.aq_base, entry_name):
-                                subobject=getattr(object, entry_name)
-                            else: raise AttributeError, entry_name
-                        else: subobject=getattr(object, entry_name)
-                    except AttributeError:
-                        got=1
-                        try: subobject=object[entry_name]
-                        except (KeyError, IndexError,
-                                TypeError, AttributeError):
-                            if debug_mode:
-                                return response.debugError(
-                                    "Cannot locate object at: %s" % URL)
-                            else:
-                                return response.notFoundError(URL)
+                try:
+                    subobject = self.publication.traverseName(
+                        self, object, entry_name, no_acquire_flag)
+                except NotFound:
+                    if debug_mode:
+                        return response.debugError(
+                            "Cannot locate object at: %s" % URL)
+                    else:
+                        return response.notFoundError(URL)
 
                 # Ensure that the object has a docstring, or that the parent
                 # object has a pseudo-docstring for the object. Objects that
@@ -395,7 +350,7 @@ class BaseRequest:
                 steps.append(entry_name)
         finally:
             parents.reverse()
- 
+
         # After traversal post traversal hooks aren't available anymore
         del self._post_traverse
 
@@ -481,7 +436,7 @@ class BaseRequest:
 
     def post_traverse(self, f, args=()):
         """Add a callable object and argument tuple to be post-traversed.
-        
+
         If traversal and authentication succeed, each post-traversal
         pair is processed in the order in which they were added.
         Each argument tuple is passed to its callable.  If a callable

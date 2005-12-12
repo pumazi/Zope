@@ -16,6 +16,7 @@ import transaction
 from zope.event import notify
 from zope.interface import implements
 from zope.publisher.interfaces import IRequest, IPublication
+from zope.publisher.interfaces import NotFound
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
 
@@ -30,14 +31,15 @@ class ZopePublication(object):
     """
     implements(IPublication)
 
-    module_name = "Zope2"
-
-    def __init__(self, db):
+    def __init__(self, db=None, module_name="Zope2"):
         # db is a ZODB.DB.DB object.
         # XXX We don't use this yet.
         self.db = db
 
-        # Fetch module info the to be backwards compatible with 'bobo'
+        # Published module, bobo-style.
+        self.module_name = module_name
+
+        # Fetch module info to be backwards compatible with 'bobo'
         # and Zope 2.
         (self.bobo_before, self.bobo_after,
          self.application, self.realm, self.debug_mode,
@@ -150,3 +152,55 @@ class ZopePublication(object):
         # does a 'Retry' if a 'Retry' exception happens and the
         # request supports retry. It's not clear how this will be
         # handled by Zope 3.
+
+    def traverseName(self, request, ob, name, acquire=True):
+        if hasattr(ob, '__bobo_traverse__'):
+            try:
+                subob = ob.__bobo_traverse__(request, name)
+                if type(subob) is type(()) and len(subob) > 1:
+                    # XXX Yuck! __bobo_traverse__ might return more
+                    # than one object!
+                    #
+                    # Add additional parents into the path
+                    #
+                    # parents[-1:] = list(subob[:-1])
+                    # ob, subob = subob[-2:]
+                    raise NotImplementedError
+                else:
+                    return subob
+            except (AttributeError, KeyError):
+                raise NotFound(ob, name)
+
+        # Should only get this far if the object doesn't have a
+        # __bobo_traverse__ method.
+        try:
+            # Note - no_acquire_flag is necessary to support
+            # things like DAV.  We have to make sure
+            # that the target object is not acquired
+            # if the request_method is other than GET
+            # or POST. Otherwise, you could never use
+            # PUT to add a new object named 'test' if
+            # an object 'test' existed above it in the
+            # heirarchy -- you'd always get the
+            # existing object :(
+            if (acquire and hasattr(ob, 'aq_base')):
+                if hasattr(ob.aq_base, name):
+                    return getattr(ob, name)
+                else:
+                    raise AttributeError, name
+            else:
+                return getattr(ob, name)
+        except AttributeError:
+            got = 1
+            try:
+                return ob[name]
+            except (KeyError, IndexError,
+                    TypeError, AttributeError):
+                raise NotFound(ob, name)
+
+_publication = None
+def get_publication(module_name):
+    global _publication
+    if _publication is None:
+        _publication = ZopePublication(db=None, module_name="Zope2")
+    return _publication
