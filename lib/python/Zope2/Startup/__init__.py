@@ -20,11 +20,10 @@ import sys
 import socket
 from re import compile
 from socket import gethostbyaddr
+import twisted.internet.reactor
 
 import ZConfig
-
 from ZConfig.components.logger import loghandler
-
 
 logger = logging.getLogger("Zope")
 started = False
@@ -106,10 +105,11 @@ class ZopeStarter:
     def run(self):
         # the mainloop.
         try:
-            import ZServer
-            import Lifetime
-            Lifetime.loop()
-            sys.exit(ZServer.exit_code)
+            #import ZServer
+            #import Lifetime
+            #Lifetime.loop()
+            #sys.exit(ZServer.exit_code)
+            twisted.internet.reactor.run()
         finally:
             self.shutdown()
 

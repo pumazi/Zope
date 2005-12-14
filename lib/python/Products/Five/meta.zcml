@@ -172,4 +172,7 @@
   <!-- load the i18n:registerTranslations directive -->
   <include package="zope.app.i18n" file="meta.zcml" />
 
+  <!-- load the zope:publisher directive -->
+  <include package="zope.app.publication" file="meta.zcml" />
+
 </configure>

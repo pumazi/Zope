@@ -15,6 +15,14 @@
   <include package="zope.app.event" />
   <include package="zope.app.traversing" />
 
+  <publisher
+      name="Zope2-HTTP"
+      factory="ZPublisher.Publication.Zope2HTTPFactory"
+      methods="*"
+      mimetypes="*"
+      priority="0"
+      />
+
   <!-- do 'traditional' traversing by default; needed by ZPT -->
   <adapter
       for="*"

@@ -12,20 +12,30 @@
 ##############################################################################
 __version__='$Revision$'[11:-2]
 
+import re
 import sys
 import transaction
+
 from zope.event import notify
+from zope.component import queryUtility
 from zope.interface import implements
 from zope.publisher.interfaces import IRequest, IPublication
 from zope.publisher.interfaces import NotFound, IPublicationRequest
+from zope.publisher.browser import BrowserRequest
+from zope.publisher.browser import BrowserResponse
+from zope.publisher.http import StrResult
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
+from zope.app.publication.interfaces import IBrowserRequestFactory
+from zope.app.publication.interfaces import IRequestPublicationFactory
 
 from ZPublisher.Publish import Retry
 from ZPublisher.Publish import get_module_info, call_object
 from ZPublisher.Publish import missing_name, dont_publish_class
 from ZPublisher.mapply import mapply
 from ZPublisher.BaseRequest import RequestContainer
+
+_marker = object()
 
 class ZopePublication(object):
     """Base Zope2 publication specification.
@@ -83,11 +93,7 @@ class ZopePublication(object):
         # If the top object has a __bobo_traverse__ method, then use it
         # to possibly traverse to an alternate top-level object.
         if hasattr(ob, '__bobo_traverse__'):
-            try:
-                ob = ob.__bobo_traverse__(request)
-            except:
-                # XXX Blind except? Yuck!
-                pass
+            ob = ob.__bobo_traverse__(request)
 
         if hasattr(ob, '__of__'):
             # Try to bind the top-level object to the request
@@ -109,9 +115,12 @@ class ZopePublication(object):
         else:
             # It's a Zope 2 request.
             args = request.args
-        return mapply(ob, args,
-                      request, call_object, 1, missing_name,
-                      dont_publish_class, request, bind=1)
+        result = mapply(ob, args,
+                        request, call_object, 1, missing_name,
+                        dont_publish_class, request, bind=1)
+        if isinstance(request, Zope2BrowserRequest):
+            return StrResult(str(result))
+        return result
 
     def afterCall(self, request, ob):
         # Last part of ZPublisher.Publish.{publish, publish_module_standard},
@@ -154,12 +163,13 @@ class ZopePublication(object):
                                      exc_info[2],
                                      )
             except Retry:
-                if not retry_allowed:
-                    return self.err_hook(object, request,
-                                         sys.exc_info()[0],
-                                         sys.exc_info()[1],
-                                         sys.exc_info()[2],
-                                         )
+                if retry_allowed:
+                    raise
+                return self.err_hook(object, request,
+                                     sys.exc_info()[0],
+                                     sys.exc_info()[1],
+                                     sys.exc_info()[2],
+                                     )
         finally:
             self._abort()
 
@@ -213,6 +223,13 @@ class ZopePublication(object):
                     TypeError, AttributeError):
                 raise NotFound(ob, name)
 
+    def getDefaultTraversal(self, request, ob):
+        if hasattr(ob, '__browser_default__'):
+            return object.__browser_default__(request)
+        if getattr(ob, 'index_html', None):
+            return ob, ['index_html']
+        return ob, []
+
 _publications = {}
 def get_publication(module_name=None):
     if module_name is None:
@@ -221,3 +238,166 @@ def get_publication(module_name=None):
         _publications[module_name] = ZopePublication(db=None,
                                                      module_name=module_name)
     return _publications[module_name]
+
+tr = {'environ': '_environ',
+      'TraversalRequestNameStack': '_traversal_stack',
+      'RESPONSE': 'response'}
+
+class Zope2BrowserResponse(BrowserResponse):
+
+    def badRequestError(self, name):
+        raise KeyError, name
+
+    def _headers(self):
+        return dict(self.getHeaders())
+
+    headers = property(_headers)
+
+class Zope2BrowserRequest(BrowserRequest):
+
+    def __init__(self, *args, **kw):
+        self.other = {'PARENTS':[]}
+        self._lazies = {}
+        self._file = None
+        self._urls = []
+        BrowserRequest.__init__(self, *args, **kw)
+
+    def _createResponse(self):
+        return Zope2BrowserResponse()
+
+    def set_lazy(self, name, func):
+        self._lazies[name] = func
+
+    _hold = BrowserRequest.hold
+
+    def __getitem__(self, key, default=_marker):
+        v = self.get(key, default)
+        if v is _marker:
+            raise KeyError, key
+        return v
+
+    def __getattr__(self, key, default=_marker):
+        v = self.get(key, default)
+        if v is _marker:
+            raise AttributeError, key
+        return v
+
+    def traverse(self, object):
+        ob = super(BrowserRequest, self).traverse(object)
+        self.other['PARENTS'].append(ob)
+        return ob
+
+    def set(self, key, value):
+        self.other[key] = value
+
+    def get(self, key, default=None, returnTaints=0,
+            URLmatch=re.compile('URL(PATH)?([0-9]+)$').match,
+            BASEmatch=re.compile('BASE(PATH)?([0-9]+)$').match,
+            ):
+        """Get a variable value
+
+        Return a value for the required variable name.
+        The value will be looked up from one of the request data
+        categories. The search order is environment variables,
+        other variables, form data, and then cookies.
+
+        """
+        from ZPublisher.HTTPRequest import isCGI_NAME, hide_key
+
+        if (key in ('other', '_file',
+                    '_lazies', '_urls') or tr.has_key(key)):
+            key = tr.get(key, key)
+            return object.__getattribute__(self, key)
+
+        if key == 'REQUEST': return self
+
+        other = self.other
+        if other.has_key(key):
+            return other[key]
+
+        if key[:1]=='U':
+            match = URLmatch(key)
+            if match is not None:
+                pathonly, n = match.groups()
+                path = self._traversed_names
+                n = len(path) - int(n)
+                if n < 0:
+                    raise KeyError, key
+                if pathonly:
+                    path = [''] + path[:n]
+                else:
+                    path = [other['SERVER_URL']] + path[:n]
+                URL = '/'.join(path)
+                if other.has_key('PUBLISHED'):
+                    # Don't cache URLs until publishing traversal is done.
+                    other[key] = URL
+                    self._urls = self._urls + (key,)
+                return URL
+
+        if isCGI_NAME(key) or key[:5] == 'HTTP_':
+            environ = self.environ
+            if environ.has_key(key) and (not hide_key(key)):
+                return environ[key]
+            return ''
+
+        if key[:1]=='B':
+            match = BASEmatch(key)
+            if match is not None:
+                pathonly, n = match.groups()
+                path = self._traversed_names
+                n = int(n)
+                if n:
+                    n = n - 1
+                    if len(path) < n:
+                        raise KeyError, key
+
+                    v = path[:n]
+                else:
+                    v = ['']
+                if pathonly:
+                    v.insert(0, '')
+                else:
+                    v.insert(0, other['SERVER_URL'])
+                URL = '/'.join(v)
+                if other.has_key('PUBLISHED'):
+                    # Don't cache URLs until publishing traversal is done.
+                    other[key] = URL
+                    self._urls = self._urls + (key,)
+                return URL
+
+            if key=='BODY' and self._file is not None:
+                p=self._file.tell()
+                self._file.seek(0)
+                v=self._file.read()
+                self._file.seek(p)
+                self.other[key]=v
+                return v
+
+            if key=='BODYFILE' and self._file is not None:
+                v=self._file
+                self.other[key]=v
+                return v
+
+        if self._lazies:
+            v = self._lazies.get(key, _marker)
+            if v is not _marker:
+                if callable(v): v = v()
+                self[key] = v                   # Promote lazy value
+                del self._lazies[key]
+                return v
+
+        v = super(Zope2BrowserRequest, self).get(key, _marker)
+        if v is not _marker: return v
+
+        return default
+
+
+class Zope2HTTPFactory(object):
+
+    implements(IRequestPublicationFactory)
+
+    def canHandle(self, environment):
+        return True
+
+    def __call__(self):
+        return Zope2BrowserRequest, ZopePublication
