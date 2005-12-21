@@ -243,7 +243,6 @@ class ZServerConfigurationTestCase(BaseTest, WarningInterceptor):
         self.assertEqual(factory.user, 'chrism')
         self.assertEqual(factory.password, '123')
         self.assertEqual(factory.hostheader, 'www.example.com')
-        self.check_prepare(factory)
         factory.create().close()
 
 

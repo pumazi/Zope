@@ -117,7 +117,7 @@ class ClockServerTests(unittest.TestCase):
         self.assertEqual(handler.arg, [])
         time.sleep(1.1) # allow timeslice to switch
         self.assertEqual(server.readable(), False)
-        self.assertEqual(handler.arg[0], 'Zope')
+        self.assertEqual(handler.arg[0], 'Zope2')
         from ZServer.HTTPResponse import HTTPResponse
         from ZPublisher.HTTPRequest import HTTPRequest
         self.assert_(isinstance(handler.arg[1], HTTPRequest))
