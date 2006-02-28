@@ -106,6 +106,7 @@ instancehome $INSTANCE
 #
 #    <environment>
 #      MY_PRODUCT_ENVVAR foobar
+#      ZODB_BLOB_TEMPDIR /tmp
 #    </environment>
 
 # Directive: debug-mode
@@ -991,6 +992,39 @@ instancehome $INSTANCE
 #     var $INSTANCE/var
 #     # ZEO client cache, in bytes
 #     cache-size 20MB
+#     # Uncomment to have a persistent disk cache
+#     #client zeo1
+#   </zeoclient>
+# </zodb_db>
+#
+# Blob storage:
+#
+# <zodb_db main>
+#   mount-point /
+#   # ZODB cache, in number of objects
+#   cache-size 5000
+#   <blobstorage>
+#     blob-dir $INSTANCE/var/blobs
+#     <filestorage>
+#       path $INSTANCE/var/Data.fs
+#     </filestorage>
+#   </blobstorage>
+# </zodb_db>
+#
+# ZEO with blobs:
+#
+# <zodb_db main>
+#   mount-point /
+#   # ZODB cache, in number of objects
+#   cache-size 5000
+#   <zeoclient>
+#     server localhost:8100
+#     storage 1
+#     name zeostorage
+#     var $INSTANCE/var
+#     # ZEO client cache, in bytes
+#     cache-size 20MB
+#     blob-dir $INSTANCE/var/blobs
 #     # Uncomment to have a persistent disk cache
 #     #client zeo1
 #   </zeoclient>
