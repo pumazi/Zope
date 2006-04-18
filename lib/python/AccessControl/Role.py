@@ -474,7 +474,7 @@ class RoleManager(ExtensionClass.Base, PermissionMapping.RoleManager):
 
         if submit=='Add Role':
             role=reqattr(REQUEST, 'role')
-            return self._addRole(role, REQUEST)
+            return self._addRole(role.strip(), REQUEST)
 
         if submit=='Delete Role':
             roles=reqattr(REQUEST, 'roles')
