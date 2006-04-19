@@ -185,7 +185,6 @@ class BaseRequest:
 
 
     def traverseName(self, object, entry_name):
-        got = 0
         URL=self['URL']
         if entry_name[:1]=='_':
             raise Forbidden("Object name begins with an underscore at: %s" % URL)
@@ -200,7 +199,6 @@ class BaseRequest:
             try:
                 subobject=getattr(object, entry_name)
             except AttributeError:
-                got=1
                 subobject=object[entry_name]
 
         # Ensure that the object has a docstring, or that the parent
@@ -227,10 +225,6 @@ class BaseRequest:
                 "The object at %s is not publishable." % URL
                 )
 
-        self.roles = getRoles(
-            object, (not got) and entry_name or None, subobject,
-            self.roles)
-        print self.roles
         return subobject
         
 
@@ -362,7 +356,17 @@ class BaseRequest:
                 request['URL'] = URL = '%s/%s' % (request['URL'], step)
                 
                 try:
-                    object = self.traverseName(object, entry_name)
+                    subobject = self.traverseName(object, entry_name)
+                    if (hasattr(object,'__bobo_traverse__') or 
+                        hasattr(object, entry_name)):
+                        check_name = entry_name
+                    else:
+                        check_name = None
+                    
+                    self.roles = getRoles(
+                        object, check_name, subobject,
+                        self.roles)
+                    object = subobject
                 except (KeyError, AttributeError):
                     if response.debug_mode:
                         return response.debugError(
