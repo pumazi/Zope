@@ -1072,6 +1072,8 @@ class HTTPRequest(BaseRequest):
         clone['PARENTS']=[self['PARENTS'][-1]]
         return clone
 
+    # XXX This is called getHeader in Response, and in Zope3 request.
+    # We should probably rename this getHeader and deprecate this.
     def get_header(self, name, default=None):
         """Return the named HTTP header, or an optional default
         argument or None if the header is not found. Note that

@@ -92,8 +92,11 @@ class ZopePublication(object):
         # Now, some code from ZPublisher.BaseRequest:
         # If the top object has a __bobo_traverse__ method, then use it
         # to possibly traverse to an alternate top-level object.
-        if hasattr(ob, '__bobo_traverse__'):
-            ob = ob.__bobo_traverse__(request)
+        try:
+            if hasattr(ob, '__bobo_traverse__'):
+                ob = ob.__bobo_traverse__(request)
+        except:
+            pass
 
         if hasattr(ob, '__of__'):
             # Try to bind the top-level object to the request
@@ -170,6 +173,8 @@ class ZopePublication(object):
                                      sys.exc_info()[1],
                                      sys.exc_info()[2],
                                      )
+            except:
+                return request.response.exception()
         finally:
             self._abort()
 
@@ -255,6 +260,10 @@ class Zope2BrowserResponse(BrowserResponse):
 
 class Zope2BrowserRequest(BrowserRequest):
 
+    # Zope 2 compatibility XXX Deprecate!
+    def get_header(self, name, default=None):
+        return self.getHeader(name, default)
+
     def __init__(self, *args, **kw):
         self.other = {'PARENTS':[]}
         self._lazies = {}
@@ -283,7 +292,7 @@ class Zope2BrowserRequest(BrowserRequest):
         return v
 
     def traverse(self, object):
-        ob = super(BrowserRequest, self).traverse(object)
+        ob = super(Zope2BrowserRequest, self).traverse(object)
         self.other['PARENTS'].append(ob)
         return ob
 
@@ -326,7 +335,7 @@ class Zope2BrowserRequest(BrowserRequest):
                 if pathonly:
                     path = [''] + path[:n]
                 else:
-                    path = [other['SERVER_URL']] + path[:n]
+                    path = [self['SERVER_URL']] + path[:n]
                 URL = '/'.join(path)
                 if other.has_key('PUBLISHED'):
                     # Don't cache URLs until publishing traversal is done.
@@ -390,7 +399,75 @@ class Zope2BrowserRequest(BrowserRequest):
         if v is not _marker: return v
 
         return default
+    
+from ZPublisher.HTTPRequest import HTTPRequest
+from ZPublisher.HTTPResponse import HTTPResponse
+from cStringIO import StringIO
+import traceback
+from zope.publisher.http import status_reasons, DirectResult
 
+class Zope2HTTPResponse(HTTPResponse):
+    
+    def setResult(self, result):
+        """Sets the response result value.
+        """
+        self.setBody(result)
+
+    def handleException(self, exc_info):
+        """Handles an otherwise unhandled exception.
+
+        The publication object gets the first chance to handle an exception,
+        and if it doesn't have a good way to do it, it defers to the
+        response.  Implementations should set the reponse body.
+        """
+        f = StringIO()
+        traceback.print_exception(
+            exc_info[0]. exc_info[1], exc_info[2], 100, f)
+        self.setResult(f.getvalue())
+
+    def internalError(self):
+        'See IPublisherResponse'
+        self.setStatus(500, u"The engines can't take any more, Jim!")
+
+    def reset(self):
+        """Reset the output result.
+
+        Reset the response by nullifying already set variables.
+        """
+        raise Exception
+
+    def retry(self):
+        """Returns a retry response
+
+        Returns a response suitable for repeating the publication attempt.
+        """
+        raise Exception
+
+    def getStatusString(self):
+        'See IHTTPResponse'
+        return '%i %s' % (self.status, status_reasons[self.status])
+
+    def getHeaders(self):
+        return self.headers.items()    
+    
+    def consumeBodyIter(self):
+        return (self.body,)
+    
+
+class Zope2HTTPRequest(HTTPRequest):
+    
+    def supportsRetry(self):
+        return False
+    
+    def traverse(self, object):
+        path = self.get('PATH_INFO')
+        self['PARENTS'] = [self.publication.root]
+        return HTTPRequest.traverse(self, path)
+
+
+def Zope2RequestFactory(sin, env):
+    response=Zope2HTTPResponse() 
+    return Zope2HTTPRequest(sin, env, response)
 
 class Zope2HTTPFactory(object):
 
@@ -400,4 +477,5 @@ class Zope2HTTPFactory(object):
         return True
 
     def __call__(self):
-        return Zope2BrowserRequest, ZopePublication
+
+        return Zope2RequestFactory, ZopePublication

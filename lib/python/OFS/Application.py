@@ -117,7 +117,6 @@ class Application(Globals.ApplicationDefaultPermissions,
     Redirect = ZopeRedirect = PrincipiaRedirect
 
     def __bobo_traverse__(self, REQUEST, name=None):
-
         try: return getattr(self, name)
         except AttributeError: pass
         try: return self[name]
