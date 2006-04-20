@@ -79,8 +79,20 @@ class Response:
     """Mock Response to replace ZPublisher.HTTPResponse.HTTPResponse.
     """
 
+    def internalError(self):
+        'See IPublisherResponse'
+        self.setStatus(500, u"The engines can't take any more, Jim!")
+
+    def setStatus(self, status, reason):
+        self.status = status
+
     def setBody(self, a):
         pass
+
+    def exception(self, fatal = 0, info = None):
+        pass
+
+    setResult = setBody
 
 class Request:
     """Mock Request to replace ZPublisher.HTTPRequest.HTTPRequest.
@@ -90,6 +102,8 @@ class Request:
 
     def __init__(self):
         self.response = Response()
+        from ZPublisher.Publication import get_publication
+        self.publication = get_publication('ZPublisher.tests.testPublish')
 
     def setPublication(self, publication):
         self.publication = publication
@@ -103,7 +117,7 @@ class Request:
     def __setitem__(self, name, value):
         pass
 
-    def traverse(self, path, validated_hook):
+    def traverse(self, path, response = None, validated_hook = None):
         return Object()
 
     def close(self):
@@ -114,6 +128,8 @@ class Request:
 
     def supports_retry(self):
         return self.retry_count < self.retry_max_count
+
+    supportsRetry = supports_retry
 
     def retry(self):
         self.retry_count += 1
@@ -130,14 +146,14 @@ def testPublisher():
     Tests to ensure that the ZPublisher correctly manages the ZODB
     transaction boundaries.
 
-    >>> from ZPublisher.Publish import publish
+    >>> from zope.publisher.publish import publish
 
     ZPublisher will commit the transaction after it has made a
     rendering of the object.
 
     >>> tracer.reset()
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request)
     >>> tracer.showTracedPath()
     begin
     __call__
@@ -153,7 +169,7 @@ def testPublisher():
     >>> tracer.reset()
     >>> tracer.exceptions['__call__'] = [ValueError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request)
     >>> tracer.showTracedPath()
     begin
     __call__
@@ -169,7 +185,7 @@ def testPublisher():
     >>> tracer.exceptions['__call__'] = [ValueError]
     >>> tracer.exceptions['zpublisher_exception_hook'] = [ValueError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request, False)
     Traceback (most recent call last):
     ...
     ValueError
@@ -190,7 +206,7 @@ def testPublisher():
     >>> tracer.reset()
     >>> tracer.exceptions['__call__'] = [ConflictError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request)
     >>> tracer.showTracedPath()
     begin
     __call__
@@ -207,7 +223,7 @@ def testPublisher():
     >>> tracer.reset()
     >>> tracer.exceptions['commit'] = [ConflictError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request)
     >>> tracer.showTracedPath()
     begin
     __call__
@@ -225,7 +241,7 @@ def testPublisher():
     >>> tracer.exceptions['__call__'] = [ConflictError, ConflictError,
     ...                                  ConflictError, ConflictError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request, False)
     Traceback (most recent call last):
     ...
     ConflictError: database conflict error
@@ -254,7 +270,7 @@ def testPublisher():
     >>> tracer.exceptions['__call__'] = [ValueError]
     >>> tracer.exceptions['zpublisher_exception_hook'] = [ConflictError]
     >>> request = Request()
-    >>> response = publish(request, module_name, after_list)
+    >>> response = publish(request, False)
     Traceback (most recent call last):
     ...
     ConflictError: database conflict error

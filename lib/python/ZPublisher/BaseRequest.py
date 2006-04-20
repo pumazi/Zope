@@ -249,10 +249,6 @@ class BaseRequest:
         if not path and not method:
             return response.forbiddenError(self['URL'])
 
-        if self.publication.root is not object:
-            self.publication.root = object
-
-        object = self.publication.getApplication(self)
         roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
         parents.append(object)
 

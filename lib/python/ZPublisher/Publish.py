@@ -164,41 +164,49 @@ def publish_module_standard(module_name,
     status=200
     after_list=[None]
     try:
-        try:
-            if response is None:
-                response=Response(stdout=stdout, stderr=stderr)
-            else:
-                stdout=response.stdout
+        if response is None:
+            response=Response(stdout=stdout, stderr=stderr)
+        else:
+            stdout=response.stdout
 
-            if request is None:
-                request=Request(stdin, environ, response)
+        if request is None:
+            request=Request(stdin, environ, response)
 
-            response = publish(request, module_name, after_list, debug=debug)
-        except SystemExit, v:
+        # We assume the publication object returned is the one in
+        # ZPublisher.Publication here so we don't bother using accessors
+        # and poke directly into the variables.
+        from ZPublisher.Publication import get_publication
+        publication = get_publication(module_name)
+        request.setPublication(publication)
+
+        from zope.publisher.publish import publish as publish3
+        publish3(request)
+    except SystemExit, v:
+        must_die=sys.exc_info()
+        request.response.exception(must_die)
+    except ImportError, v:
+        if isinstance(v, tuple) and len(v) == 3:
+            must_die=v
+        elif hasattr(sys, 'exc_info'):
             must_die=sys.exc_info()
-            request.response.exception(must_die)
-        except ImportError, v:
-            if isinstance(v, tuple) and len(v)==3: must_die=v
-            elif hasattr(sys, 'exc_info'): must_die=sys.exc_info()
-            else: must_die = SystemExit, v, sys.exc_info()[2]
-            request.response.exception(1, v)
-        except:
-            request.response.exception()
-            status=response.getStatus()
+        else:
+            must_die = SystemExit, v, sys.exc_info()[2]
+        request.response.exception(1, v)
+    except:
+        request.response.exception()
+        status=response.getStatus()
 
-        if response:
-            outputBody=getattr(response, 'outputBody', None)
-            if outputBody is not None:
-                outputBody()
-            else:
-                response=str(response)
-                if response: stdout.write(response)
+    if request.response:
+        outputBody=getattr(request.response, 'outputBody', None)
+        if outputBody is not None:
+            outputBody()
+        else:
+            response=str(request.response)
+            if response:
+                stdout.write(response)
 
         # The module defined a post-access function, call it
         if after_list[0] is not None: after_list[0]()
-
-    finally:
-        if request is not None: request.close()
 
     if must_die:
         # Try to turn exception value into an exit code.

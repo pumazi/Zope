@@ -15,12 +15,14 @@ __version__='$Revision$'[11:-2]
 import re
 import sys
 import transaction
+import types
 
 from zope.event import notify
 from zope.component import queryUtility
 from zope.interface import implements
 from zope.publisher.interfaces import IRequest, IPublication
 from zope.publisher.interfaces import NotFound, IPublicationRequest
+import zope.publisher.interfaces
 from zope.publisher.browser import BrowserRequest
 from zope.publisher.browser import BrowserResponse
 from zope.publisher.http import StrResult
@@ -35,14 +37,42 @@ from ZPublisher.Publish import missing_name, dont_publish_class
 from ZPublisher.mapply import mapply
 from ZPublisher.BaseRequest import RequestContainer
 
+from ZPublisher.HTTPRequest import HTTPRequest
+from ZPublisher.HTTPResponse import HTTPResponse
+from cStringIO import StringIO
+import traceback
+from zope.publisher.http import status_reasons, DirectResult
+from zope.publisher.interfaces import IPublisherRequest
+from zope import component
+
+
 _marker = object()
+
+class Zope3HTTPRequestTraverser(object):
+    implements(IPublisherRequest)
+
+    def __init__(self, request):
+        self.request = request
+
+    def traverse(self, object):
+        path = self.request.get('PATH_INFO')
+        self.request['PARENTS'] = [object]
+
+        return self.request.traverse(path, self.request.response,
+                                     self.request.publication.validated_hook)
+
+## XXX - Five declares that HTTPRequest implements IPublisherRequest
+## but in fact it doesn't, the traverse method API is all wrong.
+## component.provideAdapter(Zope3HTTPRequestTraverser, (HTTPRequest,),
+##                          IPublisherRequest)
+
 
 class ZopePublication(object):
     """Base Zope2 publication specification.
     """
     implements(IPublication)
 
-    def __init__(self, db=None, module_name="Zope2"):
+    def __init__(self, db = None, module_name = "Zope2"):
         # db is a ZODB.DB.DB object.
         # XXX We don't use this yet.
         self.db = db
@@ -58,6 +88,18 @@ class ZopePublication(object):
          self.transactions_manager) = get_module_info(self.module_name)
 
     def beforeTraversal(self, request):
+        # First check for "cancel" redirect:
+        if request.get('SUBMIT','').strip().lower()=='cancel':
+            # XXX Deprecate this, the Zope 2+3 publication won't support it.
+            cancel = request.get('CANCEL_ACTION','')
+            if cancel:
+                raise Redirect, cancel
+
+        if self.debug_mode:
+            request.response.debug_mode = self.debug_mode
+        if self.realm and not request.get('REMOTE_USER', None):
+            request.response.realm = self.realm
+
         # First part of old ZPublisher.Publish.publish. Call
         # 'bobo_before' hooks and start a new transaction using the
         # 'transaction_manager'.
@@ -121,8 +163,9 @@ class ZopePublication(object):
         result = mapply(ob, args,
                         request, call_object, 1, missing_name,
                         dont_publish_class, request, bind=1)
-        if isinstance(request, Zope2BrowserRequest):
-            return StrResult(str(result))
+        ## XXX - what the hell is this.
+        ## if isinstance(request, Zope2BrowserRequest):
+        ##     return StrResult(str(result))
         return result
 
     def afterCall(self, request, ob):
@@ -152,6 +195,18 @@ class ZopePublication(object):
             self.transactions_manager.abort()
 
     def handleException(self, object, request, exc_info, retry_allowed=True):
+        if isinstance(object, types.ListType):
+            object = object[0]
+
+        # DM: provide nicer error message for FTP
+        sm = getattr(request.response, "setMessage", None)
+        if sm is not None:
+            from asyncore import compact_traceback
+            cl,val= sys.exc_info()[:2]
+            sm('%s: %s %s' % (
+                getattr(cl,'__name__',cl), val,
+                debug_mode and compact_traceback()[-1] or ''))
+
         # Some exception handling from ZPublisher.Publish.publish().
         if self.err_hook is None:
             self._abort()
@@ -165,9 +220,9 @@ class ZopePublication(object):
                                      exc_info[1],
                                      exc_info[2],
                                      )
-            except Retry:
+            except Retry, retry_exception:
                 if retry_allowed:
-                    raise
+                    raise zope.publisher.interfaces.Retry(sys.exc_info)
                 return self.err_hook(object, request,
                                      sys.exc_info()[0],
                                      sys.exc_info()[1],
@@ -244,167 +299,6 @@ def get_publication(module_name=None):
                                                      module_name=module_name)
     return _publications[module_name]
 
-tr = {'environ': '_environ',
-      'TraversalRequestNameStack': '_traversal_stack',
-      'RESPONSE': 'response'}
-
-class Zope2BrowserResponse(BrowserResponse):
-
-    def badRequestError(self, name):
-        raise KeyError, name
-
-    def _headers(self):
-        return dict(self.getHeaders())
-
-    headers = property(_headers)
-
-class Zope2BrowserRequest(BrowserRequest):
-
-    # Zope 2 compatibility XXX Deprecate!
-    def get_header(self, name, default=None):
-        return self.getHeader(name, default)
-
-    def __init__(self, *args, **kw):
-        self.other = {'PARENTS':[]}
-        self._lazies = {}
-        self._file = None
-        self._urls = []
-        BrowserRequest.__init__(self, *args, **kw)
-
-    def _createResponse(self):
-        return Zope2BrowserResponse()
-
-    def set_lazy(self, name, func):
-        self._lazies[name] = func
-
-    _hold = BrowserRequest.hold
-
-    def __getitem__(self, key, default=_marker):
-        v = self.get(key, default)
-        if v is _marker:
-            raise KeyError, key
-        return v
-
-    def __getattr__(self, key, default=_marker):
-        v = self.get(key, default)
-        if v is _marker:
-            raise AttributeError, key
-        return v
-
-    def traverse(self, object):
-        ob = super(Zope2BrowserRequest, self).traverse(object)
-        self.other['PARENTS'].append(ob)
-        return ob
-
-    def set(self, key, value):
-        self.other[key] = value
-
-    def get(self, key, default=None, returnTaints=0,
-            URLmatch=re.compile('URL(PATH)?([0-9]+)$').match,
-            BASEmatch=re.compile('BASE(PATH)?([0-9]+)$').match,
-            ):
-        """Get a variable value
-
-        Return a value for the required variable name.
-        The value will be looked up from one of the request data
-        categories. The search order is environment variables,
-        other variables, form data, and then cookies.
-
-        """
-        from ZPublisher.HTTPRequest import isCGI_NAME, hide_key
-
-        if (key in ('other', '_file',
-                    '_lazies', '_urls') or tr.has_key(key)):
-            key = tr.get(key, key)
-            return object.__getattribute__(self, key)
-
-        if key == 'REQUEST': return self
-
-        other = self.other
-        if other.has_key(key):
-            return other[key]
-
-        if key[:1]=='U':
-            match = URLmatch(key)
-            if match is not None:
-                pathonly, n = match.groups()
-                path = self._traversed_names
-                n = len(path) - int(n)
-                if n < 0:
-                    raise KeyError, key
-                if pathonly:
-                    path = [''] + path[:n]
-                else:
-                    path = [self['SERVER_URL']] + path[:n]
-                URL = '/'.join(path)
-                if other.has_key('PUBLISHED'):
-                    # Don't cache URLs until publishing traversal is done.
-                    other[key] = URL
-                    self._urls = self._urls + (key,)
-                return URL
-
-        if isCGI_NAME(key) or key[:5] == 'HTTP_':
-            environ = self.environ
-            if environ.has_key(key) and (not hide_key(key)):
-                return environ[key]
-            return ''
-
-        if key[:1]=='B':
-            match = BASEmatch(key)
-            if match is not None:
-                pathonly, n = match.groups()
-                path = self._traversed_names
-                n = int(n)
-                if n:
-                    n = n - 1
-                    if len(path) < n:
-                        raise KeyError, key
-
-                    v = path[:n]
-                else:
-                    v = ['']
-                if pathonly:
-                    v.insert(0, '')
-                else:
-                    v.insert(0, other['SERVER_URL'])
-                URL = '/'.join(v)
-                if other.has_key('PUBLISHED'):
-                    # Don't cache URLs until publishing traversal is done.
-                    other[key] = URL
-                    self._urls = self._urls + (key,)
-                return URL
-
-            if key=='BODY' and self._file is not None:
-                p=self._file.tell()
-                self._file.seek(0)
-                v=self._file.read()
-                self._file.seek(p)
-                self.other[key]=v
-                return v
-
-            if key=='BODYFILE' and self._file is not None:
-                v=self._file
-                self.other[key]=v
-                return v
-
-        if self._lazies:
-            v = self._lazies.get(key, _marker)
-            if v is not _marker:
-                if callable(v): v = v()
-                self[key] = v                   # Promote lazy value
-                del self._lazies[key]
-                return v
-
-        v = super(Zope2BrowserRequest, self).get(key, _marker)
-        if v is not _marker: return v
-
-        return default
-    
-from ZPublisher.HTTPRequest import HTTPRequest
-from ZPublisher.HTTPResponse import HTTPResponse
-from cStringIO import StringIO
-import traceback
-from zope.publisher.http import status_reasons, DirectResult
 
 class Zope2HTTPResponse(HTTPResponse):
     
@@ -429,20 +323,6 @@ class Zope2HTTPResponse(HTTPResponse):
         'See IPublisherResponse'
         self.setStatus(500, u"The engines can't take any more, Jim!")
 
-    def reset(self):
-        """Reset the output result.
-
-        Reset the response by nullifying already set variables.
-        """
-        raise Exception
-
-    def retry(self):
-        """Returns a retry response
-
-        Returns a response suitable for repeating the publication attempt.
-        """
-        raise Exception
-
     def getStatusString(self):
         'See IHTTPResponse'
         return '%i %s' % (self.status, status_reasons[self.status])
@@ -455,19 +335,20 @@ class Zope2HTTPResponse(HTTPResponse):
     
 
 class Zope2HTTPRequest(HTTPRequest):
-    
+
     def supportsRetry(self):
         return False
-    
+
     def traverse(self, object):
         path = self.get('PATH_INFO')
         self['PARENTS'] = [self.publication.root]
+
         return HTTPRequest.traverse(self, path)
 
 
 def Zope2RequestFactory(sin, env):
     response=Zope2HTTPResponse() 
-    return Zope2HTTPRequest(sin, env, response)
+    return HTTPRequest(sin, env, response)
 
 class Zope2HTTPFactory(object):
 
@@ -477,5 +358,4 @@ class Zope2HTTPFactory(object):
         return True
 
     def __call__(self):
-
         return Zope2RequestFactory, ZopePublication

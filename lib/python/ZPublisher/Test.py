@@ -180,38 +180,38 @@ def publish_module(module_name,
     after_list=[None]
     from Response import Response
     from Request import Request
-    from Publish import publish
+    from Publication import get_publication
+    # from Publish import publish
+    from zope.publisher.publish import publish
     try:
-        try:
-            if response is None:
-                response=Response(stdout=stdout, stderr=stderr)
-            else:
-                stdout=response.stdout
-            if request is None:
-                request=Request(stdin, environ, response)
-            for k, v in extra.items(): request[k]=v
-            response = publish(request, module_name, after_list, debug=debug)
-        except SystemExit, v:
-            must_die=sys.exc_info()
-            response.exception(must_die)
-        except ImportError, v:
-            if isinstance(v, TupleType) and len(v)==3: must_die=v
-            else: must_die=sys.exc_info()
-            response.exception(1, v)
-        except:
-            if debug:
-                raise
-            response.exception()
-            status=response.getStatus()
-        if response:
-            response=str(response)
-        if response: stdout.write(response)
+        if response is None:
+            response=Response(stdout=stdout, stderr=stderr)
+        else:
+            stdout=response.stdout
+        if request is None:
+            request=Request(stdin, environ, response)
+        request.setPublication(get_publication())
+        for k, v in extra.items(): request[k]=v
+        response = request.response
+        publish(request) #, module_name, after_list, debug=debug)
+    except SystemExit, v:
+        must_die=sys.exc_info()
+        response.exception(must_die)
+    except ImportError, v:
+        if isinstance(v, TupleType) and len(v)==3: must_die=v
+        else: must_die=sys.exc_info()
+        response.exception(1, v)
+    except:
+        if debug:
+            raise
+        response.exception()
+        status=response.getStatus()
+    if response:
+        response=str(response)
+    if response: stdout.write(response)
 
-        # The module defined a post-access function, call it
-        if after_list[0] is not None: after_list[0]()
-
-    finally:
-        if request is not None: request.close()
+    # The module defined a post-access function, call it
+    if after_list[0] is not None: after_list[0]()
 
     if must_die:
         try: raise must_die[0], must_die[1], must_die[2]
