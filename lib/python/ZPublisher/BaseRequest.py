@@ -230,16 +230,9 @@ class BaseRequest:
 
         if method=='GET' or method=='POST' and not isinstance(response,
                                                               xmlrpc.Response):
-            # Probably a browser
-            no_acquire_flag=0
             # index_html is still the default method, only any object can
             # override it by implementing its own __browser_default__ method
             method = 'index_html'
-        elif self.maybe_webdav_client:
-            # Probably a WebDAV client.
-            no_acquire_flag=1
-        else:
-            no_acquire_flag=0
 
         URL=request['URL']
         parents = request['PARENTS']
@@ -315,37 +308,13 @@ class BaseRequest:
 
                 try:
                     subobject = self.publication.traverseName(
-                        self, object, entry_name, no_acquire_flag)
+                        self, object, entry_name)
                 except NotFound:
                     if debug_mode:
                         return response.debugError(
                             "Cannot locate object at: %s" % URL)
                     else:
                         return response.notFoundError(URL)
-
-                # Ensure that the object has a docstring, or that the parent
-                # object has a pseudo-docstring for the object. Objects that
-                # have an empty or missing docstring are not published.
-                doc = getattr(subobject, '__doc__', None)
-                if doc is None:
-                    doc = getattr(object, '%s__doc__' % entry_name, None)
-                if not doc:
-                    return response.debugError(
-                        "The object at %s has an empty or missing " \
-                        "docstring. Objects must have a docstring to be " \
-                        "published." % URL
-                        )
-
-                # Hack for security: in Python 2.2.2, most built-in types
-                # gained docstrings that they didn't have before. That caused
-                # certain mutable types (dicts, lists) to become publishable
-                # when they shouldn't be. The following check makes sure that
-                # the right thing happens in both 2.2.2+ and earlier versions.
-
-                if not typeCheck(subobject):
-                    return response.debugError(
-                        "The object at %s is not publishable." % URL
-                        )
 
                 roles = getRoles(
                     object, (not got) and entry_name or None, subobject,

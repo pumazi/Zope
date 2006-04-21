@@ -16,9 +16,10 @@ import re
 import sys
 import transaction
 import types
+import xmlrpc
 
 from zope.event import notify
-from zope.component import queryUtility
+from zope.component import queryUtility, queryMultiAdapter
 from zope.interface import implements
 from zope.publisher.interfaces import IRequest, IPublication
 from zope.publisher.interfaces import NotFound, IPublicationRequest
@@ -30,12 +31,16 @@ from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publication.interfaces import BeforeTraverseEvent
 from zope.app.publication.interfaces import IBrowserRequestFactory
 from zope.app.publication.interfaces import IRequestPublicationFactory
+from zope.app.traversing.namespace import nsParse
+from zope.app.traversing.namespace import namespaceLookup
+from zope.app.traversing.interfaces import TraversalError
 
 from ZPublisher.Publish import Retry
 from ZPublisher.Publish import get_module_info, call_object
 from ZPublisher.Publish import missing_name, dont_publish_class
 from ZPublisher.mapply import mapply
 from ZPublisher.BaseRequest import RequestContainer
+from ZPublisher.BaseRequest import typeCheck
 
 from ZPublisher.HTTPRequest import HTTPRequest
 from ZPublisher.HTTPResponse import HTTPResponse
@@ -234,7 +239,76 @@ class ZopePublication(object):
         # request supports retry. It's not clear how this will be
         # handled by Zope 3.
 
-    def traverseName(self, request, ob, name, acquire=True):
+    def traverseName(self, request, ob, name):
+        nm = name # the name to look up the object with
+
+        if name and name[:1] in '@+':
+            # Process URI segment parameters.
+            ns, nm = nsParse(name)
+            if ns:
+                try:
+                    ob2 = namespaceLookup(ns, nm, ob, request)
+                except TraversalError:
+                    raise NotFound(ob, name)
+
+                return ob2
+
+        if nm == '.':
+            return ob
+
+        if zope.publisher.interfaces.IPublishTraverse.providedBy(ob):
+            ob2 = ob.publishTraverse(request, nm)
+        else:
+            # self is marker
+            adapter = queryMultiAdapter((ob, request),
+                                     zope.publisher.interfaces.IPublishTraverse,
+                                     default = self)
+            if adapter is self:
+                ## Zope2 doesn't set up its own adapters in a lot of cases
+                ## so we will just use a default adapter.
+                adapter = Zope2PublishTraverseAdapter(ob, request)
+
+            ob2 = adapter.publishTraverse(request, nm)
+
+        return ob2
+
+    def getDefaultTraversal(self, request, ob):
+        if hasattr(ob, '__browser_default__'):
+            return object.__browser_default__(request)
+        if getattr(ob, 'index_html', None):
+            return ob, ['index_html']
+        return ob, []
+
+_publications = {}
+def get_publication(module_name=None):
+    if module_name is None:
+        module_name = "Zope2"
+    if not _publications.has_key(module_name):
+        _publications[module_name] = ZopePublication(db=None,
+                                                     module_name=module_name)
+    return _publications[module_name]
+
+
+class Zope2PublishTraverseAdapter(object):
+    implements(zope.publisher.interfaces.IPublishTraverse)
+
+    def __init__(self, context, request):
+        self.context = context
+
+    def subObject(self, request, ob, name):
+        # How did this request come in? (HTTP GET, PUT, POST, etc.)
+        method = request.get('REQUEST_METHOD', 'GET').upper()
+
+        if method == 'GET' or method == 'POST' and \
+               not isinstance(request.response, xmlrpc.Response):
+            # Probably a browser
+            no_acquire_flag=0
+        elif request.maybe_webdav_client:
+            # Probably a WebDAV client.
+            no_acquire_flag=1
+        else:
+            no_acquire_flag=0
+        
         if hasattr(ob, '__bobo_traverse__'):
             try:
                 subob = ob.__bobo_traverse__(request, name)
@@ -264,7 +338,7 @@ class ZopePublication(object):
             # an object 'test' existed above it in the
             # heirarchy -- you'd always get the
             # existing object :(
-            if (acquire and hasattr(ob, 'aq_base')):
+            if (no_acquire_flag and hasattr(ob, 'aq_base')):
                 if hasattr(ob.aq_base, name):
                     return getattr(ob, name)
                 else:
@@ -272,29 +346,40 @@ class ZopePublication(object):
             else:
                 return getattr(ob, name)
         except AttributeError:
-            got = 1
             try:
                 return ob[name]
             except (KeyError, IndexError,
                     TypeError, AttributeError):
                 raise NotFound(ob, name)
+        
+    def publishTraverse(self, request, name):
+        subobject = self.subObject(request, self.context, name)
 
-    def getDefaultTraversal(self, request, ob):
-        if hasattr(ob, '__browser_default__'):
-            return object.__browser_default__(request)
-        if getattr(ob, 'index_html', None):
-            return ob, ['index_html']
-        return ob, []
+        # Ensure that the object has a docstring, or that the parent
+        # object has a pseudo-docstring for the object. Objects that
+        # have an empty or missing docstring are not published.
+        doc = getattr(subobject, '__doc__', None)
+        if doc is None:
+            doc = getattr(object, '%s__doc__' % entry_name, None)
+        if not doc:
+            return request.response.debugError(
+                "The object at %s has an empty or missing " \
+                "docstring. Objects must have a docstring to be " \
+                "published." % URL
+                )
 
-_publications = {}
-def get_publication(module_name=None):
-    if module_name is None:
-        module_name = "Zope2"
-    if not _publications.has_key(module_name):
-        _publications[module_name] = ZopePublication(db=None,
-                                                     module_name=module_name)
-    return _publications[module_name]
+        # Hack for security: in Python 2.2.2, most built-in types
+        # gained docstrings that they didn't have before. That caused
+        # certain mutable types (dicts, lists) to become publishable
+        # when they shouldn't be. The following check makes sure that
+        # the right thing happens in both 2.2.2+ and earlier versions.
 
+        if not typeCheck(subobject):
+            return request.response.debugError(
+                "The object at %s is not publishable." % URL
+                )
+
+        return subobject
 
 class Zope2HTTPResponse(HTTPResponse):
     

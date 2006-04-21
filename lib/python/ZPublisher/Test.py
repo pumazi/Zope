@@ -190,6 +190,11 @@ def publish_module(module_name,
             stdout=response.stdout
         if request is None:
             request=Request(stdin, environ, response)
+        # make sure that the request we hand over has the
+        # default layer/skin set on it; subsequent code that
+        # wants to look up views will likely depend on it
+        from zope.app.publication.browser import setDefaultSkin
+        setDefaultSkin(request)
         request.setPublication(get_publication())
         for k, v in extra.items(): request[k]=v
         response = request.response

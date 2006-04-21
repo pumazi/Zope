@@ -60,4 +60,11 @@
        provides="zope.publisher.interfaces.ITraversingRequest"
        />
 
+  <adapter
+     for="*
+          .interfaces.IZope2Request"
+     provides="zope.publisher.interfaces.IPublishTraverse"
+     factory="ZPublisher.Publication.Zope2PublishTraverseAdapter"
+     />
+
 </configure>
