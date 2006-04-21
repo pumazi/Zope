@@ -255,6 +255,10 @@ class BaseRequest:
         # Set the posttraverse for duration of the traversal here
         self._post_traverse = post_traverse = []
 
+        # Con Zope 3 into using Zope 2's checkPermission
+        import Products.Five.security
+        Products.Five.security.newInteraction()
+
         entry_name = ''
         try:
             # We build parents in the wrong order, so we

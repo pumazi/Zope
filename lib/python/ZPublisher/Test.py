@@ -198,7 +198,7 @@ def publish_module(module_name,
         request.setPublication(get_publication())
         for k, v in extra.items(): request[k]=v
         response = request.response
-        publish(request) #, module_name, after_list, debug=debug)
+        publish(request, False) #, module_name, after_list, debug=debug)
     except SystemExit, v:
         must_die=sys.exc_info()
         response.exception(must_die)

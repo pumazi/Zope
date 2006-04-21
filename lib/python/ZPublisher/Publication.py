@@ -251,7 +251,7 @@ class ZopePublication(object):
                 except TraversalError:
                     raise NotFound(ob, name)
 
-                return ob2
+                return ob2.__of__(ob)
 
         if nm == '.':
             return ob
@@ -360,12 +360,12 @@ class Zope2PublishTraverseAdapter(object):
         # have an empty or missing docstring are not published.
         doc = getattr(subobject, '__doc__', None)
         if doc is None:
-            doc = getattr(object, '%s__doc__' % entry_name, None)
+            doc = getattr(object, '%s__doc__' % name, None)
         if not doc:
             return request.response.debugError(
                 "The object at %s has an empty or missing " \
                 "docstring. Objects must have a docstring to be " \
-                "published." % URL
+                "published." % request['URL']
                 )
 
         # Hack for security: in Python 2.2.2, most built-in types
@@ -376,7 +376,7 @@ class Zope2PublishTraverseAdapter(object):
 
         if not typeCheck(subobject):
             return request.response.debugError(
-                "The object at %s is not publishable." % URL
+                "The object at %s is not publishable." % request['URL']
                 )
 
         return subobject

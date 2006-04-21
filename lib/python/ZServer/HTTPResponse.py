@@ -251,6 +251,7 @@ class ZServerHTTPResponse(HTTPResponse):
             return self
         else:
             HTTPResponse.setBody(self, body, title, is_error, **kw)
+            return self
 
 class ChannelPipe:
     """Experimental pipe from ZPublisher to a ZServer Channel.
