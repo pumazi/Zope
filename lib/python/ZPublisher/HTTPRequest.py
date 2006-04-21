@@ -239,6 +239,8 @@ class HTTPRequest(BaseRequest):
         return self._client_addr
 
     def __init__(self, stdin, environ, response, clean=0):
+        # Call base class __init__.
+        BaseRequest.__init__(self, RESPONSE=response)
         self._orig_env=environ
         # Avoid the overhead of scrubbing the environment in the
         # case of request cloning for traversal purposes. If the
@@ -256,7 +258,7 @@ class HTTPRequest(BaseRequest):
         have_env=environ.has_key
         get_env=environ.get
         self.response=response
-        other=self.other={'RESPONSE': response}
+        other = self.other
         self.form={}
         self.taintedform={}
         self.steps=[]
@@ -1070,6 +1072,8 @@ class HTTPRequest(BaseRequest):
         clone['PARENTS']=[self['PARENTS'][-1]]
         return clone
 
+    # XXX This is called getHeader in Response, and in Zope3 request.
+    # We should probably rename this getHeader and deprecate this.
     def get_header(self, name, default=None):
         """Return the named HTTP header, or an optional default
         argument or None if the header is not found. Note that

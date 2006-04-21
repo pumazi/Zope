@@ -14,12 +14,12 @@
 
 $Id$
 """
-from urllib import quote
-import xmlrpc
-from zExceptions import Forbidden
 
-from zope.event import notify
-from zope.app.publication.interfaces import EndRequestEvent
+import xmlrpc
+from urllib import quote
+from zope.publisher.interfaces import NotFound
+
+from zExceptions import Forbidden
 
 UNSPECIFIED_ROLES=''
 
@@ -80,12 +80,23 @@ class BaseRequest:
         """
         if other is None: other=kw
         else: other.update(kw)
-        self.other=other
+        self.other = other
+        self.environ = {}
+        # Publication will be overriden by ZPublisher.Publish,
+        # publish(), we assume that by default it's the "Zope2"
+        # module. This is done so that tests using BaseRequest
+        # directly don't break.
+        from ZPublisher.Publication import get_publication
+        self.publication = get_publication(module_name="Zope2")
+
+    def setPublication(self, publication):
+        self.publication = publication
 
     def close(self):
         self.other.clear()
-        self._held=None
-        notify(EndRequestEvent(None, self))
+        self._held = None
+        self.publication.endRequest(self, None)
+        self.publication = None
 
     def processInputs(self):
         """Do any input processing that could raise errors
@@ -155,7 +166,7 @@ class BaseRequest:
 
     def __contains__(self, key):
         return self.has_key(key)
-    
+
     def keys(self):
         keys = {}
         keys.update(self.common)
@@ -219,40 +230,19 @@ class BaseRequest:
 
         if method=='GET' or method=='POST' and not isinstance(response,
                                                               xmlrpc.Response):
-            # Probably a browser
-            no_acquire_flag=0
             # index_html is still the default method, only any object can
             # override it by implementing its own __browser_default__ method
             method = 'index_html'
-        elif self.maybe_webdav_client:
-            # Probably a WebDAV client.
-            no_acquire_flag=1
-        else:
-            no_acquire_flag=0
 
         URL=request['URL']
-        parents=request['PARENTS']
-        object=parents[-1]
+        parents = request['PARENTS']
+        object = parents[-1]
         del parents[:]
-
-        roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
-
-        # if the top object has a __bobo_traverse__ method, then use it
-        # to possibly traverse to an alternate top-level object.
-        if hasattr(object,'__bobo_traverse__'):
-            try:
-                object=object.__bobo_traverse__(request)
-                roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
-            except: pass
 
         if not path and not method:
             return response.forbiddenError(self['URL'])
 
-        # Traverse the URL to find the object:
-        if hasattr(object, '__of__'):
-            # Try to bind the top-level object to the request
-            # This is how you get 'self.REQUEST'
-            object=object.__of__(RequestContainer(REQUEST=request))
+        roles = getRoles(None, None, object, UNSPECIFIED_ROLES)
         parents.append(object)
 
         steps=self.steps
@@ -270,9 +260,7 @@ class BaseRequest:
             # We build parents in the wrong order, so we
             # need to make sure we reverse it when we're doe.
             while 1:
-                bpth = getattr(object, '__before_publishing_traverse__', None)
-                if bpth is not None:
-                    bpth(object, self)
+                self.publication.callTraversalHooks(self, object)
 
                 path = request.path = request['TraversalRequestNameStack']
                 # Check for method:
@@ -318,71 +306,15 @@ class BaseRequest:
                           "Object name begins with an underscore at: %s" % URL)
                     else: return response.forbiddenError(entry_name)
 
-                if hasattr(object,'__bobo_traverse__'):
-                    try:
-                        subobject=object.__bobo_traverse__(request,entry_name)
-                        if type(subobject) is type(()) and len(subobject) > 1:
-                            # Add additional parents into the path
-                            parents[-1:] = list(subobject[:-1])
-                            object, subobject = subobject[-2:]
-                    except (AttributeError, KeyError):
-                        if debug_mode:
-                            return response.debugError(
-                                "Cannot locate object at: %s" % URL)
-                        else:
-                            return response.notFoundError(URL)
-                else:
-                    try:
-                        # Note - no_acquire_flag is necessary to support
-                        # things like DAV.  We have to make sure
-                        # that the target object is not acquired
-                        # if the request_method is other than GET
-                        # or POST. Otherwise, you could never use
-                        # PUT to add a new object named 'test' if
-                        # an object 'test' existed above it in the
-                        # heirarchy -- you'd always get the
-                        # existing object :(
-
-                        if (no_acquire_flag and len(path) == 0 and
-                            hasattr(object, 'aq_base')):
-                            if hasattr(object.aq_base, entry_name):
-                                subobject=getattr(object, entry_name)
-                            else: raise AttributeError, entry_name
-                        else: subobject=getattr(object, entry_name)
-                    except AttributeError:
-                        got=1
-                        try: subobject=object[entry_name]
-                        except (KeyError, IndexError,
-                                TypeError, AttributeError):
-                            if debug_mode:
-                                return response.debugError(
-                                    "Cannot locate object at: %s" % URL)
-                            else:
-                                return response.notFoundError(URL)
-
-                # Ensure that the object has a docstring, or that the parent
-                # object has a pseudo-docstring for the object. Objects that
-                # have an empty or missing docstring are not published.
-                doc = getattr(subobject, '__doc__', None)
-                if doc is None:
-                    doc = getattr(object, '%s__doc__' % entry_name, None)
-                if not doc:
-                    return response.debugError(
-                        "The object at %s has an empty or missing " \
-                        "docstring. Objects must have a docstring to be " \
-                        "published." % URL
-                        )
-
-                # Hack for security: in Python 2.2.2, most built-in types
-                # gained docstrings that they didn't have before. That caused
-                # certain mutable types (dicts, lists) to become publishable
-                # when they shouldn't be. The following check makes sure that
-                # the right thing happens in both 2.2.2+ and earlier versions.
-
-                if not typeCheck(subobject):
-                    return response.debugError(
-                        "The object at %s is not publishable." % URL
-                        )
+                try:
+                    subobject = self.publication.traverseName(
+                        self, object, entry_name)
+                except NotFound:
+                    if debug_mode:
+                        return response.debugError(
+                            "Cannot locate object at: %s" % URL)
+                    else:
+                        return response.notFoundError(URL)
 
                 roles = getRoles(
                     object, (not got) and entry_name or None, subobject,
@@ -395,7 +327,7 @@ class BaseRequest:
                 steps.append(entry_name)
         finally:
             parents.reverse()
- 
+
         # After traversal post traversal hooks aren't available anymore
         del self._post_traverse
 
@@ -481,7 +413,7 @@ class BaseRequest:
 
     def post_traverse(self, f, args=()):
         """Add a callable object and argument tuple to be post-traversed.
-        
+
         If traversal and authentication succeed, each post-traversal
         pair is processed in the order in which they were added.
         Each argument tuple is passed to its callable.  If a callable

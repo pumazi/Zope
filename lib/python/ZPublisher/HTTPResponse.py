@@ -180,6 +180,10 @@ class HTTPResponse(BaseResponse):
         self.stdout = stdout
         self.stderr = stderr
 
+    def internalError(self):
+        'See IPublisherResponse'
+        self.setStatus(500, u"The engines can't take any more, Jim!")
+
     def retry(self):
         """Return a response object to be used in a retry attempt
         """

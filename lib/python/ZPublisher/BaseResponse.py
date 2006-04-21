@@ -54,6 +54,10 @@ class BaseResponse:
         """Output the response body"""
         self.stdout.write(str(self))
 
+    def setResult(self, result):
+        """IResponse"""
+        self.setBody(result)
+
     def setBody(self, body):
         self.body = body
 
