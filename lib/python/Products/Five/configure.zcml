@@ -50,5 +50,14 @@
   <five:implements class="ZPublisher.HTTPRequest.HTTPRequest"
                    interface="zope.publisher.interfaces.browser.IBrowserRequest"
                    />
+                   
+  <five:implements class="ZPublisher.HTTPRequest.HTTPRequest"
+                   interface=".interfaces.IZope2Request"
+                   />
+  <adapter
+       for=".interfaces.IZope2Request"
+       factory="ZPublisher.Publication.Zope3HTTPRequestTraverser"
+       provides="zope.publisher.interfaces.ITraversingRequest"
+       />
 
 </configure>

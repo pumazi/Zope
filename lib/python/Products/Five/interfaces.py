@@ -27,6 +27,10 @@ class IBrowserDefault(Interface):
         find the method to be published.
         """
 
+class IZope2Request(Interface):
+    """Marks the Zope2 request"""
+    pass
+
 class IMenuItemType(IInterface):
     """Menu item type
 

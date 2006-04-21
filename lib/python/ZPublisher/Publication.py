@@ -49,7 +49,7 @@ from zope import component
 _marker = object()
 
 class Zope3HTTPRequestTraverser(object):
-    implements(IPublisherRequest)
+    implements(zope.publisher.interfaces.ITraversingRequest)
 
     def __init__(self, request):
         self.request = request
@@ -60,11 +60,6 @@ class Zope3HTTPRequestTraverser(object):
 
         return self.request.traverse(path, self.request.response,
                                      self.request.publication.validated_hook)
-
-## XXX - Five declares that HTTPRequest implements IPublisherRequest
-## but in fact it doesn't, the traverse method API is all wrong.
-## component.provideAdapter(Zope3HTTPRequestTraverser, (HTTPRequest,),
-##                          IPublisherRequest)
 
 
 class ZopePublication(object):
@@ -229,7 +224,8 @@ class ZopePublication(object):
                                      sys.exc_info()[2],
                                      )
             except:
-                return request.response.exception()
+                request.response.exception()
+                return request.response
         finally:
             self._abort()
 
