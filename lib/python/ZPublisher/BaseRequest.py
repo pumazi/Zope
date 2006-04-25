@@ -18,8 +18,15 @@ from urllib import quote
 import xmlrpc
 from zExceptions import Forbidden, Unauthorized
 
+from zope.interface import implements
+from zope.component import queryMultiAdapter
 from zope.event import notify
 from zope.app.publication.interfaces import EndRequestEvent
+from zope.publisher.interfaces import IPublishTraverse
+from zope.publisher.interfaces import NotFound
+from zope.app.traversing.interfaces import TraversalError
+from zope.app.traversing.namespace import nsParse
+from zope.app.traversing.namespace import namespaceLookup
 
 UNSPECIFIED_ROLES=''
 
@@ -45,6 +52,59 @@ except ImportError:
     def getRoles(container, name, value, default):
         return getattr(value, '__roles__', default)
 
+class DefaultPublishTraverse(object):
+
+    implements(IPublishTraverse)
+    
+    def __init__(self, context, request):
+        self.context = context
+        self.request = request
+        
+    def publishTraverse(self, name):
+        object = self.context
+        URL=self.request['URL']
+
+        if name[:1]=='_':
+            raise Forbidden("Object name begins with an underscore at: %s" % URL)
+
+        if hasattr(object,'__bobo_traverse__'):
+            subobject=object.__bobo_traverse__(self.request, name)
+            if type(subobject) is type(()) and len(subobject) > 1:
+                # Add additional parents into the path
+                parents[-1:] = list(subobject[:-1])
+                object, subobject = subobject[-2:]
+        else:
+            try:
+                subobject=getattr(object, name)
+            except AttributeError:
+                subobject=object[name]
+
+        # Ensure that the object has a docstring, or that the parent
+        # object has a pseudo-docstring for the object. Objects that
+        # have an empty or missing docstring are not published.
+        doc = getattr(subobject, '__doc__', None)
+        if doc is None:
+            doc = getattr(object, '%s__doc__' % name, None)
+        if not doc:
+            raise Forbidden(
+                "The object at %s has an empty or missing " \
+                "docstring. Objects must have a docstring to be " \
+                "published." % URL
+                )
+
+        # Hack for security: in Python 2.2.2, most built-in types
+        # gained docstrings that they didn't have before. That caused
+        # certain mutable types (dicts, lists) to become publishable
+        # when they shouldn't be. The following check makes sure that
+        # the right thing happens in both 2.2.2+ and earlier versions.
+
+        if not typeCheck(subobject):
+            raise Forbidden(
+                "The object at %s is not publishable." % URL
+                )
+
+        return subobject
+        
 
 _marker=[]
 class BaseRequest:
@@ -184,49 +244,37 @@ class BaseRequest:
     __repr__=__str__
 
 
-    def traverseName(self, object, entry_name):
-        URL=self['URL']
-        if entry_name[:1]=='_':
-            raise Forbidden("Object name begins with an underscore at: %s" % URL)
+    def traverseName(self, ob, name):
+        nm = name # the name to look up the object with
 
-        if hasattr(object,'__bobo_traverse__'):
-            subobject=object.__bobo_traverse__(self,entry_name)
-            if type(subobject) is type(()) and len(subobject) > 1:
-                # Add additional parents into the path
-                parents[-1:] = list(subobject[:-1])
-                object, subobject = subobject[-2:]
+        if name and name[:1] in '@+':
+            # Process URI segment parameters.
+            ns, nm = nsParse(name)
+            if ns:
+                try:
+                    ob2 = namespaceLookup(ns, nm, ob, self)
+                except TraversalError:
+                    raise NotFound(ob, name)
+
+                return ob2.__of__(ob)
+
+        if nm == '.':
+            return ob
+
+        if IPublishTraverse.providedBy(ob):
+            ob2 = ob.publishTraverse(self, nm)
         else:
-            try:
-                subobject=getattr(object, entry_name)
-            except AttributeError:
-                subobject=object[entry_name]
+            # self is marker
+            adapter = queryMultiAdapter((ob, self), IPublishTraverse)
+            if adapter is None:
+                ## Zope2 doesn't set up its own adapters in a lot of cases
+                ## so we will just use a default adapter.
+                adapter = DefaultPublishTraverse(ob, self)
 
-        # Ensure that the object has a docstring, or that the parent
-        # object has a pseudo-docstring for the object. Objects that
-        # have an empty or missing docstring are not published.
-        doc = getattr(subobject, '__doc__', None)
-        if doc is None:
-            doc = getattr(object, '%s__doc__' % entry_name, None)
-        if not doc:
-            raise Forbidden(
-                "The object at %s has an empty or missing " \
-                "docstring. Objects must have a docstring to be " \
-                "published." % URL
-                )
+            ob2 = adapter.publishTraverse(nm)
 
-        # Hack for security: in Python 2.2.2, most built-in types
-        # gained docstrings that they didn't have before. That caused
-        # certain mutable types (dicts, lists) to become publishable
-        # when they shouldn't be. The following check makes sure that
-        # the right thing happens in both 2.2.2+ and earlier versions.
+        return ob2
 
-        if not typeCheck(subobject):
-            raise Forbidden(
-                "The object at %s is not publishable." % URL
-                )
-
-        return subobject
-        
 
     def traverse(self, path, response=None, validated_hook=None):
         """Traverse the object space
@@ -395,12 +443,11 @@ class BaseRequest:
         # an object 'test' existed above it in the
         # heirarchy -- you'd always get the
         # existing object :(
-
         if (no_acquire_flag and
-            hasattr(parent[1], 'aq_base') and 
-            not hasattr(parent[1],'__bobo_traverse__')):
-            if not (hasattr(parent[1].aq_base, entry_name) or
-                    parent[1].aq_base.has_key(entry_name)):
+            hasattr(parents[1], 'aq_base') and 
+            not hasattr(parents[1],'__bobo_traverse__')):
+            if not (hasattr(parents[1].aq_base, entry_name) or
+                    parents[1].aq_base.has_key(entry_name)):
                 raise AttributeError, entry_name
             
         # After traversal post traversal hooks aren't available anymore
