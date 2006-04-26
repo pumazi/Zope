@@ -24,6 +24,7 @@ from zope.event import notify
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.publisher.interfaces import IPublishTraverse
 from zope.publisher.interfaces import NotFound
+from zope.publisher.interfaces.browser import IBrowserPublisher
 from zope.app.traversing.interfaces import TraversalError
 from zope.app.traversing.namespace import nsParse
 from zope.app.traversing.namespace import namespaceLookup
@@ -54,21 +55,21 @@ except ImportError:
 
 class DefaultPublishTraverse(object):
 
-    implements(IPublishTraverse)
+    implements(IBrowserPublisher)
     
     def __init__(self, context, request):
         self.context = context
         self.request = request
         
-    def publishTraverse(self, name):
+    def publishTraverse(self, request, name):
         object = self.context
-        URL=self.request['URL']
+        URL=request['URL']
 
         if name[:1]=='_':
             raise Forbidden("Object name begins with an underscore at: %s" % URL)
 
         if hasattr(object,'__bobo_traverse__'):
-            subobject=object.__bobo_traverse__(self.request, name)
+            subobject=object.__bobo_traverse__(request, name)
             if type(subobject) is type(()) and len(subobject) > 1:
                 # Add additional parents into the path
                 parents[-1:] = list(subobject[:-1])
@@ -104,6 +105,11 @@ class DefaultPublishTraverse(object):
                 )
 
         return subobject
+    
+    def browserDefault(self, request):
+        if hasattr(self.context, '__browser_default__'):
+            return self.context.__browser_default__(request)
+        return self.context, ()
         
 
 _marker=[]
@@ -264,14 +270,13 @@ class BaseRequest:
         if IPublishTraverse.providedBy(ob):
             ob2 = ob.publishTraverse(self, nm)
         else:
-            # self is marker
             adapter = queryMultiAdapter((ob, self), IPublishTraverse)
             if adapter is None:
                 ## Zope2 doesn't set up its own adapters in a lot of cases
                 ## so we will just use a default adapter.
                 adapter = DefaultPublishTraverse(ob, self)
 
-            ob2 = adapter.publishTraverse(nm)
+            ob2 = adapter.publishTraverse(self, nm)
 
         return ob2
 
@@ -368,37 +373,48 @@ class BaseRequest:
                 path = request.path = request['TraversalRequestNameStack']
                 # Check for method:
                 if path:
-                    entry_name = path.pop()
-                elif hasattr(object, '__browser_default__'):
-                    # If we have reached the end of the path. We look to see
-                    # if the object implements __browser_default__. If so, we
-                    # call it to let the object tell us how to publish it
-                    # __browser_default__ returns the object to be published
-                    # (usually self) and a sequence of names to traverse to
-                    # find the method to be published. (Casey)
-                    request._hacked_path=1
-                    object, default_path = object.__browser_default__(request)
-                    if len(default_path) > 1:
-                        path = list(default_path)
-                        method = path.pop()
-                        request['TraversalRequestNameStack'] = path
-                        continue
-                    else:
-                        entry_name = default_path[0]
-                elif (method and hasattr(object,method)
-                      and entry_name != method
-                      and getattr(object, method) is not None):
-                    request._hacked_path=1
-                    entry_name = method
-                    method = 'index_html'
+                    entry_name = path.pop() 
                 else:
-                    if (hasattr(object, '__call__')):
-                        self.roles = getRoles(object, '__call__', object.__call__,
-                                         self.roles)
-                    if request._hacked_path:
-                        i=URL.rfind('/')
-                        if i > 0: response.setBase(URL[:i])
-                    break
+                    # If we have reached the end of the path, we look to see
+                    # if we can find IBrowserPublisher.browserDefault. If so,
+                    # we call it to let the object tell us how to publish it
+                    # BrowserDefault returns the object to be published
+                    # (usually self) and a sequence of names to traverse to
+                    # find the method to be published.
+                    if IBrowserPublisher.providedBy(object):
+                        adapter = object
+                    else:
+                        adapter = queryMultiAdapter((object, self), IBrowserPublisher)
+                        if adapter is None:
+                            ## Zope2 doesn't set up its own adapters in a lot of cases
+                            ## so we will just use a default adapter.
+                            adapter = DefaultPublishTraverse(object, self)
+
+                    newobject, default_path = adapter.browserDefault(self)
+                    if default_path or newobject is not object:
+                        object = newobject
+                        request._hacked_path=1
+                        if len(default_path) > 1:
+                            path = list(default_path)
+                            method = path.pop()
+                            request['TraversalRequestNameStack'] = path
+                            continue
+                        else:
+                            entry_name = default_path[0]
+                    elif (method and hasattr(object,method)
+                          and entry_name != method
+                          and getattr(object, method) is not None):
+                        request._hacked_path=1
+                        entry_name = method
+                        method = 'index_html'
+                    else:
+                        if hasattr(object, '__call__'):
+                            self.roles = getRoles(object, '__call__', object.__call__,
+                                                  self.roles)
+                        if request._hacked_path:
+                            i=URL.rfind('/')
+                            if i > 0: response.setBase(URL[:i])
+                        break
                 step = quote(entry_name)
                 _steps.append(step)
                 request['URL'] = URL = '%s/%s' % (request['URL'], step)
