@@ -16,9 +16,9 @@ $Id$
 """
 from urllib import quote
 import xmlrpc
-from zExceptions import Forbidden, Unauthorized
+from zExceptions import Forbidden, Unauthorized, NotFound
 
-from zope.interface import implements, providedBy
+from zope.interface import implements, providedBy, Interface
 from zope.component import queryMultiAdapter
 from zope.component import getSiteManager
 from zope.component.interfaces import ComponentLookupError
@@ -26,7 +26,6 @@ from zope.event import notify
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.app.publisher.browser import queryDefaultViewName
 from zope.publisher.interfaces import IPublishTraverse
-from zope.publisher.interfaces import NotFound
 from zope.component.interfaces import IDefaultViewName
 from zope.publisher.interfaces.browser import IBrowserPublisher
 from zope.publisher.interfaces.browser import IBrowserRequest
@@ -262,8 +261,6 @@ class BaseRequest:
 
 
     def traverseName(self, ob, name):
-        nm = name # the name to look up the object with
-
         if name and name[:1] in '@+':
             # Process URI segment parameters.
             ns, nm = nsParse(name)
@@ -271,15 +268,15 @@ class BaseRequest:
                 try:
                     ob2 = namespaceLookup(ns, nm, ob, self)
                 except TraversalError:
-                    raise NotFound(ob, name)
+                    raise KeyError(ob, name)
 
                 return ob2.__of__(ob)
 
-        if nm == '.':
+        if name == '.':
             return ob
 
         if IPublishTraverse.providedBy(ob):
-            ob2 = ob.publishTraverse(self, nm)
+            ob2 = ob.publishTraverse(self, name)
         else:
             adapter = queryMultiAdapter((ob, self), IPublishTraverse)
             if adapter is None:
@@ -287,7 +284,21 @@ class BaseRequest:
                 ## so we will just use a default adapter.
                 adapter = DefaultPublishTraverse(ob, self)
 
-            ob2 = adapter.publishTraverse(self, nm)
+            try:
+                ob2 = adapter.publishTraverse(self, name)
+            except (AttributeError, KeyError, NotFound):
+                # Find a view even if it doesn't start with @@, but only
+                # If nothing else could be found
+                ob2 = queryMultiAdapter((ob, self), Interface, name)
+                if ob2 is not None:
+                    ob2 = ob2.__of__(ob)
+                    # OFS.Application.__bobo_traverse__ calls
+                    # REQUEST.RESPONSE.notFoundError which sets the HTTP
+                    # status code to 404
+                    self.RESPONSE.setStatus(200)
+                else:
+                    # There was no view, reraise the earlier error:
+                    raise
 
         return ob2
 
