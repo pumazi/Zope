@@ -24,6 +24,7 @@ from zope.component import getSiteManager
 from zope.component.interfaces import ComponentLookupError
 from zope.event import notify
 from zope.app.publication.interfaces import EndRequestEvent
+from zope.app.publisher.browser import queryDefaultViewName
 from zope.publisher.interfaces import IPublishTraverse
 from zope.publisher.interfaces import NotFound
 from zope.component.interfaces import IDefaultViewName
@@ -116,15 +117,7 @@ class DefaultPublishTraverse(object):
         # Zope 3.2 still uses IDefaultView name when it
         # registeres default views, even though it's
         # deprecated. So we handle that here:
-        try:
-            sm = getSiteManager(self.context)
-        except ComponentLookupError:
-            # Context has no context (typically Application).
-            # Just look up the global site manager
-            sm = getSiteManager()
-        default_name = sm.adapters.lookup(
-            map(providedBy, (self.context, request)),
-            IDefaultViewName)
+        default_name = queryDefaultViewName(self.context, request)
         if default_name is not None:
             return self.context, (default_name,)
         return self.context, ()
