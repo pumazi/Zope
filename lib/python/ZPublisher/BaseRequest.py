@@ -18,13 +18,17 @@ from urllib import quote
 import xmlrpc
 from zExceptions import Forbidden, Unauthorized
 
-from zope.interface import implements
+from zope.interface import implements, providedBy
 from zope.component import queryMultiAdapter
+from zope.component import getSiteManager
+from zope.component.interfaces import ComponentLookupError
 from zope.event import notify
 from zope.app.publication.interfaces import EndRequestEvent
 from zope.publisher.interfaces import IPublishTraverse
 from zope.publisher.interfaces import NotFound
+from zope.component.interfaces import IDefaultViewName
 from zope.publisher.interfaces.browser import IBrowserPublisher
+from zope.publisher.interfaces.browser import IBrowserRequest
 from zope.app.traversing.interfaces import TraversalError
 from zope.app.traversing.namespace import nsParse
 from zope.app.traversing.namespace import namespaceLookup
@@ -109,6 +113,20 @@ class DefaultPublishTraverse(object):
     def browserDefault(self, request):
         if hasattr(self.context, '__browser_default__'):
             return self.context.__browser_default__(request)
+        # Zope 3.2 still uses IDefaultView name when it
+        # registeres default views, even though it's
+        # deprecated. So we handle that here:
+        try:
+            sm = getSiteManager(self.context)
+        except ComponentLookupError:
+            # Context has no context (typically Application).
+            # Just look up the global site manager
+            sm = getSiteManager()
+        default_name = sm.adapters.lookup(
+            map(providedBy, (self.context, request)),
+            IDefaultViewName)
+        if default_name is not None:
+            return self.context, (default_name,)
         return self.context, ()
         
 
@@ -381,15 +399,17 @@ class BaseRequest:
                     # BrowserDefault returns the object to be published
                     # (usually self) and a sequence of names to traverse to
                     # find the method to be published.
-                    if IBrowserPublisher.providedBy(object):
+                    if (IBrowserPublisher.providedBy(object) or 
+                        IDefaultViewName.providedBy(object)):
                         adapter = object
                     else:
-                        adapter = queryMultiAdapter((object, self), IBrowserPublisher)
+                        adapter = queryMultiAdapter((object, self), 
+                                                    IBrowserPublisher)
                         if adapter is None:
-                            ## Zope2 doesn't set up its own adapters in a lot of cases
-                            ## so we will just use a default adapter.
+                            # Zope2 doesn't set up its own adapters in a lot
+                            # of cases so we will just use a default adapter.
                             adapter = DefaultPublishTraverse(object, self)
-
+                    
                     newobject, default_path = adapter.browserDefault(self)
                     if default_path or newobject is not object:
                         object = newobject
