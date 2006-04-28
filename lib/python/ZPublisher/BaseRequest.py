@@ -72,33 +72,33 @@ class DefaultPublishTraverse(object):
         if name[:1]=='_':
             raise Forbidden("Object name begins with an underscore at: %s" % URL)
 
-        if hasattr(object,'__bobo_traverse__'):
-            subobject=object.__bobo_traverse__(request, name)
-            if type(subobject) is type(()) and len(subobject) > 1:
-                # Add additional parents into the path
-                parents[-1:] = list(subobject[:-1])
-                object, subobject = subobject[-2:]
-        else:
-            try:
-                subobject=getattr(object, name)
-            except AttributeError:
+        try:
+            if hasattr(object,'__bobo_traverse__'):
+                subobject=object.__bobo_traverse__(request, name)
+                if type(subobject) is type(()) and len(subobject) > 1:
+                    # Add additional parents into the path
+                    # XXX This needs handling. Check the publish refactor branch...
+                    parents[-1:] = list(subobject[:-1])
+                    object, subobject = subobject[-2:]
+            else:
                 try:
+                    subobject=getattr(object, name)
+                except AttributeError:
                     subobject=object[name]
-                except (AttributeError, KeyError, NotFound):
-                    # Find a view even if it doesn't start with @@, but only
-                    # If nothing else could be found
-                    ob2 = queryMultiAdapter((object, request), Interface, name)
-                    if ob2 is not None:
-                        # OFS.Application.__bobo_traverse__ calls
-                        # REQUEST.RESPONSE.notFoundError which sets the HTTP
-                        # status code to 404
-                        request.RESPONSE.setStatus(200)
-                        # We don't need to do the docstring security check
-                        # for views, so lets skip it and return the object here.
-                        return ob2.__of__(object) 
-                    else:
-                        # There was no view, reraise the earlier error:
-                        raise
+             
+        except (AttributeError, KeyError, NotFound):
+            # Find a view even if it doesn't start with @@, but only
+            # If nothing else could be found
+            subobject = queryMultiAdapter((object, request), Interface, name)
+            if subobject is not None:
+                # OFS.Application.__bobo_traverse__ calls
+                # REQUEST.RESPONSE.notFoundError which sets the HTTP
+                # status code to 404
+                request.RESPONSE.setStatus(200)
+                # We don't need to do the docstring security check
+                # for views, so lets skip it and return the object here.
+                return subobject.__of__(object) 
+            raise
 
         # Ensure that the object has a docstring, or that the parent
         # object has a pseudo-docstring for the object. Objects that

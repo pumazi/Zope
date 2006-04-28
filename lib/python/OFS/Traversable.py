@@ -242,10 +242,11 @@ class Traversable:
                         except (NotFound, KeyError): 
                             # Try to look for a view
                             next = queryMultiAdapter((obj, self.REQUEST), 
-                                                     Interface, name).__of__(obj)
+                                                     Interface, name)
                             if next is None:
                                 # Didn't find one, reraise the error:
                                 raise
+                            next = next.__of__(obj)
                         if restricted and not securityManager.validate(
                             obj, obj, _none, next):
                             raise Unauthorized, name
