@@ -82,7 +82,23 @@ class DefaultPublishTraverse(object):
             try:
                 subobject=getattr(object, name)
             except AttributeError:
-                subobject=object[name]
+                try:
+                    subobject=object[name]
+                except (AttributeError, KeyError, NotFound):
+                    # Find a view even if it doesn't start with @@, but only
+                    # If nothing else could be found
+                    ob2 = queryMultiAdapter((object, request), Interface, name)
+                    if ob2 is not None:
+                        # OFS.Application.__bobo_traverse__ calls
+                        # REQUEST.RESPONSE.notFoundError which sets the HTTP
+                        # status code to 404
+                        request.RESPONSE.setStatus(200)
+                        # We don't need to do the docstring security check
+                        # for views, so lets skip it and return the object here.
+                        return ob2.__of__(object) 
+                    else:
+                        # There was no view, reraise the earlier error:
+                        raise
 
         # Ensure that the object has a docstring, or that the parent
         # object has a pseudo-docstring for the object. Objects that
@@ -284,21 +300,7 @@ class BaseRequest:
                 ## so we will just use a default adapter.
                 adapter = DefaultPublishTraverse(ob, self)
 
-            try:
-                ob2 = adapter.publishTraverse(self, name)
-            except (AttributeError, KeyError, NotFound):
-                # Find a view even if it doesn't start with @@, but only
-                # If nothing else could be found
-                ob2 = queryMultiAdapter((ob, self), Interface, name)
-                if ob2 is not None:
-                    ob2 = ob2.__of__(ob)
-                    # OFS.Application.__bobo_traverse__ calls
-                    # REQUEST.RESPONSE.notFoundError which sets the HTTP
-                    # status code to 404
-                    self.RESPONSE.setStatus(200)
-                else:
-                    # There was no view, reraise the earlier error:
-                    raise
+            ob2 = adapter.publishTraverse(self, name)
 
         return ob2
 
