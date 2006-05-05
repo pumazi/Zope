@@ -11,12 +11,13 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-""" Unit tests for AcceleratedCacheManager module.
+""" Unit tests for AcceleratedHTTPCacheManager module.
 
 $Id$
 """
 
 import unittest
+from OFS.Folder import Folder
 from Products.StandardCacheManagers.AcceleratedHTTPCacheManager \
      import AcceleratedHTTPCache, AcceleratedHTTPCacheManager
 
@@ -107,6 +108,34 @@ class AcceleratedHTTPCacheTests(unittest.TestCase):
         self.assertEqual(requests[0]['path'], dummy.absolute_url_path())
         self.assertEqual(requests[1]['path'], dummy.path)
 
+    def test_strip_root_paths(self):
+        # More control of purge paths for virtual hosting features.
+        cache = self._makeOne()
+        cache.notify_urls = ['http://foo.com']
+        cache.connection_factory, requests = MockConnectionClassFactory()
+        cache.strip_root_paths = True
+        dummy = DummyObject(path='/i/live/here',
+                            urlpath='/published/elsewhere')
+        cache.root_path = '/i/live'
+        cache.ZCache_invalidate(dummy)
+        # That should fire off two invalidations...
+        self.assertEqual(requests[0]['path'], '/published/elsewhere')
+        self.assertEqual(requests[1]['path'], '/here')
+        cache.connection_factory, requests = MockConnectionClassFactory()
+        cache.root_path = '/published'
+        cache.ZCache_invalidate(dummy)
+        self.assertEqual(requests[0]['path'], '/elsewhere')
+        self.assertEqual(requests[1]['path'], '/i/live/here')
+        # Should only affect full path segments, not things that
+        # happen to start with the same substring.
+        cache.root_path = '/pub'
+        dummy = DummyObject(path='/public/stuff',
+                            urlpath='/pub/food')
+        cache.connection_factory, requests = MockConnectionClassFactory()
+        cache.ZCache_invalidate(dummy)
+        self.assertEqual(requests[0]['path'], '/food')
+        self.assertEqual(requests[1]['path'], '/public/stuff')
+
 
 class CacheManagerTests(unittest.TestCase):
 
@@ -117,7 +146,6 @@ class CacheManagerTests(unittest.TestCase):
         return self._getTargetClass()(*args, **kw)
 
     def _makeContext(self):
-        from OFS.Folder import Folder
         root = Folder()
         root.getPhysicalPath = lambda: ('', 'some_path',)
         cm_id = 'http_cache'
@@ -141,6 +169,34 @@ class CacheManagerTests(unittest.TestCase):
         self.assert_('anonymous_only' in settings.keys())
         self.assert_('interval' in settings.keys())
         self.assert_('notify_urls' in settings.keys())
+        self.assert_('root_path' in settings.keys())
+        self.assert_('strip_root_paths' in settings.keys())
+
+    def test_default_root_path(self):
+        root1, cachemanager1 = self._makeContext()
+        self.assertEqual(cachemanager1._settings['root_path'],
+                         '/'.join(root1.getPhysicalPath()))
+        manager_id = cachemanager1.getId()
+        # Rather than do whole-hog copy/paste, which requires
+        # more annoying setup, we'll just do _setObject() and
+        # call manage_beforeDelete() manually.
+        cachemanager1.manage_beforeDelete(cachemanager1, root1)
+        root2 = Folder()
+        ROOT2_PATH = '/some/new/place'
+        root2.getPhysicalPath = lambda: ('','someplace','else')
+        root2._setObject(manager_id, cachemanager1)
+        cachemanager2 = root2[manager_id]
+        # The path should update to match the new location.
+        self.assertEqual(cachemanager2._settings['root_path'],
+                         '/'.join(root2.getPhysicalPath()))
+        # But if a path was already configured, it should be left alone.
+        root3, cachemanager3 = self._makeContext()
+        ORIG_PATH='/leave/me/alone'
+        cachemanager3._settings['root_path'] =  ORIG_PATH
+        cachemanager3.manage_beforeDelete(cachemanager3, root3)
+        root1._setObject('new_manager', cachemanager3)
+        self.assertEqual(root1['new_manager']._settings['root_path'],
+                         ORIG_PATH)
 
 
 def test_suite():

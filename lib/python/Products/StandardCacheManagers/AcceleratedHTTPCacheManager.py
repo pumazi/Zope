@@ -15,6 +15,13 @@ Accelerated HTTP cache manager --
   Adds caching headers to the response so that downstream caches will
   cache according to a common policy.
 
+XXX TODO: Consider adding features from this patch:
+http://www.zope.org/Members/mtb/index_html/AcceleratedHTTPCacheManager-headers.diff/file_view
+
+XXX TODO: Add UI for strip_root_paths feature.
+
+XXX TODO: update help.stx.
+
 $Id$
 '''
 
@@ -40,6 +47,7 @@ class AcceleratedHTTPCache (Cache):
     # Also note that objects of this class are not persistent,
     # nor do they use acquisition.
 
+    strip_root_paths = 0
     connection_factory = httplib.HTTPConnection
 
     def __init__(self):
@@ -59,7 +67,8 @@ class AcceleratedHTTPCache (Cache):
         # any kind of fuzzy purging; we have to specify exactly the
         # URL to purge.  So we try to purge the known paths most
         # likely to turn up in practice: the physical path and the
-        # current absolute_url_path.  Any of those can be
+        # current absolute_url_path, optionally with the cache
+        # manager's containment path stripped off. Any of those can be
         # wrong in some circumstances, but it may be the best we can
         # do :-(
         # It would be nice if Squid's purge feature was better
@@ -68,19 +77,35 @@ class AcceleratedHTTPCache (Cache):
         phys_path = ob.getPhysicalPath()
         if self.hit_counts.has_key(phys_path):
             del self.hit_counts[phys_path]
-        purge_paths = (ob.absolute_url_path(), quote('/'.join(phys_path)))
+        self.notify_urls = [u.strip() for u in self.notify_urls
+                            if u.strip()]
+        if not self.notify_urls:
+            return
+        purge_paths = [ob.absolute_url_path(), quote('/'.join(phys_path))]
         # Don't purge the same path twice.
         if purge_paths[0] == purge_paths[1]:
+            purge_paths = purge_paths[:1]
+        if self.strip_root_paths:
+            # Treat root_path as the physical root of the site, i.e.
+            # left-strip it from all purge paths. Strip path segments,
+            # not just substrings.
+            logger.debug('Stripping %s from paths' % self.root_path)
+            root_path = self.root_path.split('/')
+            for i, path in enumerate(purge_paths):
+                path_parts = path.split('/')
+                if path_parts[:len(root_path)] == root_path:
+                    new_path = '/'.join(path_parts[len(root_path):])
+                    if path.startswith('/') and not new_path.startswith('/'):
+                        new_path = '/' + new_path
+                    purge_paths[i] = new_path
+        # Often phsyical == virtual, don't purge the same path twice.
+        if purge_paths[-1] == purge_paths[0]:
             purge_paths  = purge_paths[:1]
         results = []
-        for url in self.notify_urls:
-            if not url.strip():
-                continue
+        for u in self.notify_urls:
             # Send the PURGE request to each HTTP accelerator.
-            if url[:7].lower() == 'http://':
-                u = url
-            else:
-                u = 'http://' + url
+            if u[:7].lower() != 'http://':
+                u = 'http://' + u
             (scheme, host, path, params, query, fragment
              ) = urlparse.urlparse(u)
             if path.lower().startswith('/http://'):
@@ -98,7 +123,7 @@ class AcceleratedHTTPCache (Cache):
                     msg = 'socket.gaierror: maybe the server ' + \
                           'at %s is down, or the cache manager ' + \
                           'is misconfigured?'
-                    logger.error(msg % url)
+                    logger.error(msg % u)
                     continue
                 r = h.getresponse()
                 status = '%s %s' % (r.status, r.reason)
@@ -135,8 +160,9 @@ class AcceleratedHTTPCache (Cache):
             return
         # Set HTTP Expires and Cache-Control headers
         seconds=self.interval
-        expires=rfc1123_date(time.time() + seconds)
-        RESPONSE.setHeader('Last-Modified',rfc1123_date(time.time()))
+        now = time.time()
+        expires=rfc1123_date(now + seconds)
+        RESPONSE.setHeader('Last-Modified',rfc1123_date(now))
         RESPONSE.setHeader('Cache-Control', 'max-age=%d' % seconds)
         RESPONSE.setHeader('Expires', expires)
 
@@ -164,8 +190,29 @@ class AcceleratedHTTPCacheManager (CacheManager, SimpleItem):
         self.title = ''
         self._settings = {'anonymous_only':1,
                           'interval':3600,
-                          'notify_urls':()}
+                          'notify_urls':(),
+                          'root_path':'',
+                          'strip_root_paths':0,
+                          }
         self.__cacheid = '%s_%f' % (id(self), time.time())
+
+    security.declarePrivate('manage_afterAdd')
+    def manage_afterAdd(self, item, container):
+        CacheManager.manage_afterAdd(self, item, container)
+        SimpleItem.manage_afterAdd(self, item, container)
+        if not self._settings['root_path'].strip():
+            path =  '/'.join(container.getPhysicalPath())
+            self._settings['root_path'] = path
+            self._p_changed = 1
+
+    security.declarePrivate('manage_beforeDelete')
+    def manage_beforeDelete(self, item, container):
+        CacheManager.manage_beforeDelete(self, item, container)
+        SimpleItem.manage_beforeDelete(self, item, container)
+        if ( self._settings['root_path'].strip() ==
+             '/'.join(container.getPhysicalPath())):
+            self._settings['root_path'] = ''
+            self._p_changed = 1
 
     def getId(self):
         ' '
@@ -199,7 +246,11 @@ class AcceleratedHTTPCacheManager (CacheManager, SimpleItem):
         self._settings = {
             'anonymous_only':settings.get('anonymous_only') and 1 or 0,
             'interval':int(settings['interval']),
-            'notify_urls':tuple(settings['notify_urls']),}
+            'notify_urls':tuple(settings['notify_urls']),
+            # XXX Add root_path and strip_root_paths to UI.
+            'root_path':'/'.join(self.getPhysicalPath()[:-1]),
+            'strip_root_paths':int(settings.get('strip_root_paths', 1)),
+            }
         cache = self.ZCacheManager_getCache()
         cache.initSettings(self._settings)
         if REQUEST is not None:
@@ -255,7 +306,6 @@ class AcceleratedHTTPCacheManager (CacheManager, SimpleItem):
 
 
 InitializeClass(AcceleratedHTTPCacheManager)
-
 
 manage_addAcceleratedHTTPCacheManagerForm = DTMLFile('dtml/addAccel',
                                                      globals())
