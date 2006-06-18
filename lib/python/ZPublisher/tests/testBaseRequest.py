@@ -151,7 +151,6 @@ class TestBaseRequest(TestCase):
         r = self.makeBaseRequest()
         self.f1.objWithBPTH._path = ['view']
         self.f1.objWithBD._default_path = ['view']
-        import pdb;pdb.set_trace()
         r.traverse('folder/objWithBD/objWithBPTH')
         self.assertEqual(r.URL, '/folder/objWithBD/objWithBPTH/view')
         self.assertEqual(r.response.base, '/folder/objWithBD/objWithBPTH/')

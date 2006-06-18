@@ -147,7 +147,9 @@ class DefaultPublishTraverse(object):
         # deprecated. So we handle that here:
         default_name = queryDefaultViewName(self.context, request)
         if default_name is not None:
-            return self.context, (default_name,)
+            # Adding '@@' here forces this to be a view.
+            # A neater solution might be desireable.
+            return self.context, ('@@' + default_name,)
         return self.context, ()
         
 
