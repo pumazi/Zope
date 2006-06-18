@@ -95,7 +95,7 @@ class DefaultPublishTraverse(object):
                 # OFS.Application.__bobo_traverse__ calls
                 # REQUEST.RESPONSE.notFoundError which sets the HTTP
                 # status code to 404
-                request.RESPONSE.setStatus(200)
+                request.response.setStatus(200)
                 # We don't need to do the docstring security check
                 # for views, so lets skip it and return the object here.
                 return subobject.__of__(object)
@@ -107,7 +107,7 @@ class DefaultPublishTraverse(object):
                     subobject=getattr(object, name)
                     # Again, clear any error status created by __bobo_traverse__
                     # because we actually found something:
-                    request.RESPONSE.setStatus(200)
+                    request.response.setStatus(200)
                     return subobject
                 except AttributeError:
                     pass
