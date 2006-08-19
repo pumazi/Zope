@@ -15,12 +15,12 @@
 $Id$
 """
 
-import ZopeLite as Zope2
 import utils
 
-from ZopeLite import hasProduct
-from ZopeLite import installProduct
-from ZopeLite import _print
+from utils import hasProduct
+from layer import installProduct
+from utils import _print
+from utils import setAllLayers
 
 from ZopeTestCase import folder_name
 from ZopeTestCase import user_name
@@ -49,9 +49,10 @@ from zopedoctest import ZopeDocFileSuite
 from zopedoctest import FunctionalDocTestSuite
 from zopedoctest import FunctionalDocFileSuite
 
+from layer import ZopeLiteLayer
+from layer import Zope2Layer
+
 import zopedoctest as doctest
 import transaction
 import placeless
-
-Zope = Zope2
 

@@ -15,7 +15,6 @@
 $Id$
 """
 
-import ZopeLite as Zope2
 import unittest
 import transaction
 import profiler
@@ -25,10 +24,9 @@ import connections
 
 from AccessControl.SecurityManagement import noSecurityManager
 
-
-
 def app():
     '''Opens a ZODB connection and returns the app object.'''
+    import ZopeLite as Zope2
     app = Zope2.app()
     app = utils.makerequest(app)
     connections.register(app)

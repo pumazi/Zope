@@ -44,9 +44,6 @@ def temporaryPlacelessSetUp(orig_func, placeless_available=True, required_zcml=[
         creation.
         ''' % orig_func.__doc__
 
-        # Setup the placeless stuff that's needed to create a fixture
-        setUp()
-
         # Call any necessary callbacks for setting up ZCML
         callZCML(required_zcml)
         if kw.has_key('required_zcml'):
