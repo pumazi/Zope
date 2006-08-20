@@ -14,13 +14,10 @@
 
 $Id$
 """
-
-import ZopeLite as Zope2
 import transaction
 import base
 import utils
 import connections
-
 
 class Sandboxed:
     '''Derive from this class and an xTestCase to make each test
@@ -32,6 +29,7 @@ class Sandboxed:
 
     def _app(self):
         '''Returns the app object for a test.'''
+        import ZopeLite as Zope2
         app = Zope2.app(Zope2.sandbox().open())
         AppZapper().set(app)
         app = utils.makerequest(app)

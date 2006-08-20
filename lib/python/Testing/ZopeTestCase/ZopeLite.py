@@ -26,6 +26,7 @@ $Id$
 """
 
 import os, sys, time
+from utils import hasProduct, _print
 
 # Allow code to tell it is run by the test framework
 os.environ['ZOPETESTCASE'] = '1'
@@ -35,11 +36,6 @@ sys.setcheckinterval(2500)
 
 # Shut up if we are not in control of the import process
 _quiet = sys.modules.has_key('Zope2')
-
-def _print(msg):
-    '''Writes 'msg' to stderr and flushes the stream.'''
-    sys.stderr.write(msg)
-    sys.stderr.flush()
 
 def _write(msg):
     '''Writes 'msg' to stderr if not _quiet.'''
@@ -138,10 +134,6 @@ import Products
 
 _theApp = Zope2.app()
 _installedProducts = {}
-
-def hasProduct(name):
-    '''Checks if a product can be found along Products.__path__'''
-    return name in [n[1] for n in get_products()]
 
 def installProduct(name, quiet=0):
     '''Installs a Zope product.'''

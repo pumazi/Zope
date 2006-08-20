@@ -29,6 +29,7 @@ import functional
 import interfaces
 import utils
 import connections
+import layer
 
 from AccessControl import getSecurityManager
 from AccessControl.SecurityManagement import newSecurityManager
@@ -50,6 +51,8 @@ class ZopeTestCase(base.TestCase):
                       base.TestCase.__implements__)
 
     _setup_fixture = 1
+
+    layer = layer.Zope2Layer
 
     def _setup(self):
         '''Sets up the fixture. Framework authors may

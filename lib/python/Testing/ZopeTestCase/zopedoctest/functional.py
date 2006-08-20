@@ -298,23 +298,34 @@ class FunctionalSuiteFactory(ZopeSuiteFactory):
                                        | doctest.REPORT_NDIFF
                                        | doctest.NORMALIZE_WHITESPACE)
 
+from Testing.ZopeTestCase.layer import Zope2Layer
 
+def setlayer(layer):
+    def wrapfactory(factory):
+        def wrapper(*args, **kwargs):
+            suite = factory(*args, **kwargs)
+            suite.layer=layer
+            return suite
+        return wrapper
+    return wrapfactory
+
+@setlayer(Zope2Layer)
 def ZopeDocTestSuite(module=None, **kw):
     module = doctest._normalize_module(module)
     return ZopeSuiteFactory(module, **kw).doctestsuite()
 
-
+@setlayer(Zope2Layer)
 def ZopeDocFileSuite(*paths, **kw):
     if kw.get('module_relative', True):
         kw['package'] = doctest._normalize_module(kw.get('package'))
     return ZopeSuiteFactory(*paths, **kw).docfilesuite()
 
-
+@setlayer(Zope2Layer)
 def FunctionalDocTestSuite(module=None, **kw):
     module = doctest._normalize_module(module)
     return FunctionalSuiteFactory(module, **kw).doctestsuite()
 
-
+@setlayer(Zope2Layer)
 def FunctionalDocFileSuite(*paths, **kw):
     if kw.get('module_relative', True):
         kw['package'] = doctest._normalize_module(kw.get('package'))
