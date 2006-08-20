@@ -24,14 +24,45 @@ import time
 import random
 import transaction
 
+def appcall(function, *args, **kw):
+    '''Calls a function passing 'app' as first argument.'''
+    from base import app, close
+    app = app()
+    args = (app,) + args
+    try:
+        return function(*args, **kw)
+    finally:
+        transaction.abort()
+        close(app)
+        
 
+def deferToZ2Layer(function):
+    '''
+    decorator assumes following:
+
+    * function only takes one argument: app
+    
+    * if app is not passed in, function should be deferred 
+
+    deferral queues execution of the function to the setup call of
+    Testing.ZopeTestCase.layer.Zope2Layer
+    '''
+    def wrapped(*args, **kwargs):
+        if args or kwargs.get('app', None):
+            return function(*args, **kwargs)
+        else:
+            import layer
+            def curryAppCall(*args, **kwargs):
+                return appcall(function, *args, **kwargs)
+            return layer._z2_callables.append((curryAppCall, args, kwargs))
+    return wrapped
+
+
+@deferToZ2Layer
 def setupCoreSessions(app=None):
     '''Sets up the session_data_manager e.a.'''
     from Acquisition import aq_base
     commit = 0
-
-    if app is None: 
-        return appcall(setupCoreSessions)
 
     if not hasattr(app, 'temp_folder'):
         from Products.TemporaryFolder.TemporaryFolder import MountedTemporaryFolder
@@ -67,11 +98,9 @@ def setupCoreSessions(app=None):
     if commit:
         transaction.commit()
 
-
+@deferToZ2Layer
 def setupZGlobals(app=None):
     '''Sets up the ZGlobals BTree required by ZClasses.'''
-    if app is None: 
-        return appcall(setupZGlobals)
 
     root = app._p_jar.root()
     if not root.has_key('ZGlobals'):
@@ -79,11 +108,9 @@ def setupZGlobals(app=None):
         root['ZGlobals'] = OOBTree()
         transaction.commit()
 
-
+@deferToZ2Layer
 def setupSiteErrorLog(app=None):
     '''Sets up the error_log object required by ZPublisher.'''
-    if app is None: 
-        return appcall(setupSiteErrorLog)
 
     if not hasattr(app, 'error_log'):
         try:
@@ -147,18 +174,6 @@ def makerequest(app, stdout=sys.stdout):
     return app.__of__(RequestContainer(REQUEST=request))
 
 
-def appcall(function, *args, **kw):
-    '''Calls a function passing 'app' as first argument.'''
-    from base import app, close
-    app = app()
-    args = (app,) + args
-    try:
-        return function(*args, **kw)
-    finally:
-        transaction.abort()
-        close(app)
-
-
 def makelist(arg):
     '''Turns arg into a list. Where arg may be
        list, tuple, or string.
@@ -171,6 +186,32 @@ def makelist(arg):
        return filter(None, [arg])
     raise ValueError('Argument must be list, tuple, or string')
 
+def hasProduct(name):
+    '''Checks if a product can be found along Products.__path__'''
+    from OFS.Application import get_products
+    return name in [n[1] for n in get_products()]
+
+def _print(msg):
+    '''Writes 'msg' to stderr and flushes the stream.'''
+    sys.stderr.write(msg)
+    sys.stderr.flush()
+
+def setDebugMode(mode):
+    '''
+    Allows manual setting of Five's inspection of debug mode to allow for
+    zcml to fail meaningfully
+    '''
+    import Products.Five.fiveconfigure as fc
+    fc.debug_mode=mode
+
+def setAllLayers(suite, newlayer):
+    '''
+    helper function that iterates through all the subsuites in a
+    suite, resetting their layer to @param layer: the desired layer
+    class
+    '''
+    [setattr(subsuite, 'layer', newlayer) for subsuite in suite]
+    return suite
 
 __all__ = [
     'setupCoreSessions',
@@ -181,5 +222,9 @@ __all__ = [
     'appcall',
     'makerequest',
     'makelist',
+    'hasProduct',
+    'setDebugMode',
+    '_print',
+    'setAllLayers'
 ]
 
