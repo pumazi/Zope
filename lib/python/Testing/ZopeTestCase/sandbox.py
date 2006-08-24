@@ -19,6 +19,7 @@ import base
 import utils
 import connections
 
+
 class Sandboxed:
     '''Derive from this class and an xTestCase to make each test
        run in its own ZODB sandbox::

@@ -34,20 +34,22 @@ from Globals import SOFTWARE_HOME
 examples_path = os.path.join(SOFTWARE_HOME, '..', '..', 'skel', 'import', 'Examples.zexp')
 examples_path = os.path.abspath(examples_path)
 
-
-# Open ZODB connection
-app = ZopeTestCase.app()
-
 # Set up sessioning objects
-ZopeTestCase.utils.setupCoreSessions(app)
+ZopeTestCase.utils.setupCoreSessions()
 
-# Set up example applications
-if not hasattr(app, 'Examples'):
-    ZopeTestCase.utils.importObjectFromFile(app, examples_path)
+from layer import Zope2Layer
 
-# Close ZODB connection
-ZopeTestCase.close(app)
+class ShoppingCartLayer(Zope2Layer):
+    @classmethod
+    def setUp(cls):
+        app = ZopeTestCase.app()
+        if not hasattr(app, 'Examples'):
+            ZopeTestCase.utils.importObjectFromFile(app, examples_path)
+        ZopeTestCase.close(app)
 
+    @classmethod
+    def tearDown(cls):
+        raise NotImplementedError
 
 class DummyOrder:
     '''Construct an order we can add to the cart'''
@@ -60,6 +62,8 @@ class DummyOrder:
 
 class TestShoppingCart(ZopeTestCase.ZopeTestCase):
     '''Test the ShoppingCart example application'''
+
+    layer = ShoppingCartLayer
 
     _setup_fixture = 0  # No default fixture
 
@@ -116,10 +120,9 @@ class TestShoppingCart(ZopeTestCase.ZopeTestCase):
         # Additional test to trigger connection pool depletion bug
         pass
 
-
 class TestSandboxedShoppingCart(ZopeTestCase.Sandboxed, TestShoppingCart):
     '''Demonstrate that sessions work in sandboxes''' 
-
+    
 
 def test_suite():
     from unittest import TestSuite, makeSuite

@@ -43,6 +43,8 @@ class Zope2Layer(ZopeLiteLayer):
          for name, quiet in _products]
 
         [func(*args, **kw) for func, args, kw in _z2_callables]
+        import transaction as txn
+        txn.commit()
 
     @classmethod
     def tearDown(cls):

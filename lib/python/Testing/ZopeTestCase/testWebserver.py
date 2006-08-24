@@ -39,14 +39,13 @@ if __name__ == '__main__':
 from Testing import ZopeTestCase
 
 from Testing.ZopeTestCase import transaction
+from Testing.ZopeTestCase.layer import Zope2Layer
+
 from AccessControl import Unauthorized
 import urllib
 
 # Create the error_log object
 ZopeTestCase.utils.setupSiteErrorLog()
-
-
-
 
 class ManagementOpener(urllib.FancyURLopener):
     '''Logs on as manager when prompted'''
@@ -57,8 +56,6 @@ class UnauthorizedOpener(urllib.FancyURLopener):
     '''Raises Unauthorized when prompted'''
     def prompt_user_passwd(self, host, realm):
         raise Unauthorized, 'The URLopener was asked for authentication'
-
-from layer import Zope2Layer
 
 folder_url, host, port = None, None, None
 

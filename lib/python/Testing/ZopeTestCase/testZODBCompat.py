@@ -168,11 +168,20 @@ class DummyObject(SimpleItem):
     _v_foo = None
     _p_foo = None
 
-app = ZopeTestCase.app()
-app._setObject('dummy1', DummyObject())
-app._setObject('dummy2', DummyObject())
-transaction.commit()
-ZopeTestCase.close(app)
+from layer import Zope2Layer
+
+class ZODBCompatLayer(Zope2Layer):
+    @classmethod
+    def setUp(cls):
+        app = ZopeTestCase.app()
+        app._setObject('dummy1', DummyObject())
+        app._setObject('dummy2', DummyObject())
+        transaction.commit()
+        ZopeTestCase.close(app)
+
+    @classmethod
+    def tearDown(cls):
+        raise NotImplementedError
 
 
 class TestAttributesOfCleanObjects(ZopeTestCase.ZopeTestCase):
@@ -194,6 +203,8 @@ class TestAttributesOfCleanObjects(ZopeTestCase.ZopeTestCase):
 
        This testcase exploits the fact that test methods are sorted by name.
     '''
+    
+    layer = ZODBCompatLayer
     
     def afterSetUp(self):
         self.dummy = self.app.dummy1 # See above
@@ -256,6 +267,8 @@ class TestAttributesOfDirtyObjects(ZopeTestCase.ZopeTestCase):
        This testcase exploits the fact that test methods are sorted by name.
     '''
 
+    layer = ZODBCompatLayer
+    
     def afterSetUp(self):
         self.dummy = self.app.dummy2 # See above
         self.dummy.touchme = 1 # Tag, you're dirty
@@ -305,6 +318,8 @@ class TestAttributesOfDirtyObjects(ZopeTestCase.ZopeTestCase):
 
 class TestTransactionAbort(ZopeTestCase.ZopeTestCase):
 
+    layer = ZODBCompatLayer
+    
     def testTransactionAbort(self):
         self.folder.foo = 1
         self.failUnless(hasattr(self.folder, 'foo'))

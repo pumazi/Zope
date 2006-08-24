@@ -1,4 +1,4 @@
-##############################################################################
+#############################################################################
 #
 # Copyright (c) 2005 Zope Corporation and Contributors. All Rights Reserved.
 #
@@ -34,7 +34,6 @@ def appcall(function, *args, **kw):
     finally:
         transaction.abort()
         close(app)
-        
 
 def deferToZ2Layer(function):
     '''
@@ -52,11 +51,10 @@ def deferToZ2Layer(function):
             return function(*args, **kwargs)
         else:
             import layer
-            def curryAppCall(*args, **kwargs):
+            def caller(*args, **kwargs):
                 return appcall(function, *args, **kwargs)
-            return layer._z2_callables.append((curryAppCall, args, kwargs))
+            return layer._z2_callables.append((caller, args, kwargs))
     return wrapped
-
 
 @deferToZ2Layer
 def setupCoreSessions(app=None):
@@ -121,17 +119,15 @@ def setupSiteErrorLog(app=None):
             app._setObject('error_log', SiteErrorLog())
             transaction.commit()
 
-
 def importObjectFromFile(container, filename, quiet=0):
     '''Imports an object from a (.zexp) file into the given container.'''
-    from ZopeLite import _print, _patched
+    from ZopeLite import _patched
     quiet = quiet or not _patched
     start = time.time()
     if not quiet: _print("Importing %s ... " % os.path.basename(filename))
     container._importObjectFromFile(filename, verify=0)
     transaction.commit()
     if not quiet: _print('done (%.3fs)\n' % (time.time() - start))
-
 
 _Z2HOST = None
 _Z2PORT = None
