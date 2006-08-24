@@ -45,9 +45,7 @@ import urllib
 # Create the error_log object
 ZopeTestCase.utils.setupSiteErrorLog()
 
-# Start the web server
-host, port = ZopeTestCase.utils.startZServer(4)
-folder_url = 'http://%s:%d/%s' %(host, port, ZopeTestCase.folder_name)
+
 
 
 class ManagementOpener(urllib.FancyURLopener):
@@ -60,8 +58,28 @@ class UnauthorizedOpener(urllib.FancyURLopener):
     def prompt_user_passwd(self, host, realm):
         raise Unauthorized, 'The URLopener was asked for authentication'
 
+from layer import Zope2Layer
 
+folder_url, host, port = None, None, None
+
+class WebserverLayer(Zope2Layer):
+    @classmethod
+    def setUp(cls):
+        global host, port, folder_url
+        # Start the web server
+        host, port = ZopeTestCase.utils.startZServer(4)
+        folder_url = 'http://%s:%d/%s' %(host, port, ZopeTestCase.folder_name)
+        
+    @classmethod
+    def tearDown(cls):
+        import Testing.ZopeTestCase.utils
+        Testing.ZopeTestCase.utils._Z2HOST = None
+        Testing.ZopeTestCase.utils._Z2PORT = None
+        # XXX shut down the zserver too
+    
 class TestWebserver(ZopeTestCase.ZopeTestCase):
+
+    layer = WebserverLayer
 
     def afterSetUp(self):
         uf = self.folder.acl_users
