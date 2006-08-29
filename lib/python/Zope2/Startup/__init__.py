@@ -214,19 +214,14 @@ class ZopeStarter:
 
 
     def serverListen(self):
-                                  
 
-        servers = []
     	for server in self.cfg.servers:
+
             if hasattr(server, 'fast_listen'):
                 # This one has the delayed listening feature
                 if not server.fast_listen:
                     server.fast_listen = True
-                    # ATT: should that be a config option? (aj)
-                    server.listen( 1024 )
-            else:
-                return
-
+                    server.listen(1024) # same value as defined in medusa.http_server.py  
 
 
     def setupServers(self):
