@@ -132,7 +132,7 @@ def http(request_string, handle_errors=True):
     # Discard leading white space to make call layout simpler
     request_string = request_string.lstrip()
 
-    # split off and parse the command line
+    # Split off and parse the command line
     l = request_string.find('\n')
     command_line = request_string[:l].rstrip()
     request_string = request_string[l+1:]
@@ -162,6 +162,10 @@ def http(request_string, handle_errors=True):
 
     headers = [split_header(header)
                for header in rfc822.Message(instream).headers]
+
+    # Store request body without headers
+    instream = StringIO(instream.read())
+
     for name, value in headers:
         name = ('_'.join(name.upper().split('-')))
         if name not in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
@@ -200,15 +204,22 @@ class ZopeSuiteFactory:
     def __init__(self, *args, **kw):
         self._args = args
         self._kw = kw
+        self._layer = None
         self.setup_globs()
         self.setup_test_class()
         self.setup_optionflags()
 
     def doctestsuite(self):
-        return doctest.DocTestSuite(*self._args, **self._kw)
+        suite = doctest.DocTestSuite(*self._args, **self._kw)
+        if self._layer is not None:
+            suite.layer = self._layer
+        return suite
 
     def docfilesuite(self):
-        return doctest.DocFileSuite(*self._args, **self._kw)
+        suite = doctest.DocFileSuite(*self._args, **self._kw)
+        if self._layer is not None:
+            suite.layer = self._layer
+        return suite
 
     def setup_globs(self):
         globs = self._kw.setdefault('globs', {})
@@ -223,6 +234,10 @@ class ZopeSuiteFactory:
 
         if 'test_class' in self._kw:
             del self._kw['test_class']
+
+        # Fix for http://zope.org/Collectors/Zope/2178
+        if hasattr(test_class, 'layer'):
+            self._layer = test_class.layer
 
         # If the test_class does not have a runTest method, we add
         # a dummy attribute so that TestCase construction works.
@@ -298,6 +313,7 @@ class FunctionalSuiteFactory(ZopeSuiteFactory):
                                        | doctest.REPORT_NDIFF
                                        | doctest.NORMALIZE_WHITESPACE)
 
+
 from Testing.ZopeTestCase.layer import Zope2Layer
 
 def setlayer(layer):
@@ -309,26 +325,27 @@ def setlayer(layer):
         return wrapper
     return wrapfactory
 
+
 @setlayer(Zope2Layer)
 def ZopeDocTestSuite(module=None, **kw):
-    module = doctest._normalize_module(module)
+    module = doctest._normalize_module(module, depth=3)
     return ZopeSuiteFactory(module, **kw).doctestsuite()
 
 @setlayer(Zope2Layer)
 def ZopeDocFileSuite(*paths, **kw):
     if kw.get('module_relative', True):
-        kw['package'] = doctest._normalize_module(kw.get('package'))
+        kw['package'] = doctest._normalize_module(kw.get('package'), depth=3)
     return ZopeSuiteFactory(*paths, **kw).docfilesuite()
 
 @setlayer(Zope2Layer)
 def FunctionalDocTestSuite(module=None, **kw):
-    module = doctest._normalize_module(module)
+    module = doctest._normalize_module(module, depth=3)
     return FunctionalSuiteFactory(module, **kw).doctestsuite()
 
 @setlayer(Zope2Layer)
 def FunctionalDocFileSuite(*paths, **kw):
     if kw.get('module_relative', True):
-        kw['package'] = doctest._normalize_module(kw.get('package'))
+        kw['package'] = doctest._normalize_module(kw.get('package'), depth=3)
     return FunctionalSuiteFactory(*paths, **kw).docfilesuite()
 
 

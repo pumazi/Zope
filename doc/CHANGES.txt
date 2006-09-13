@@ -8,6 +8,24 @@ Zope Changes
 
     Bugs fixed
 
+      - Collector #2185: Log username for FCGI requests.
+
+      - Collector #2152: Fixed MailHost documentation; simple_send does not
+        process or validate its arguments in any way.
+
+      - Collector #2175: ZTUtils.make_hidden_input did not escape double-quotes.
+
+      - Collector #2176: Fixed bad logging call.
+
+      - Collector #1907: Moved 'alt' property from File to Image.
+
+      - Collector #1983: Specifying session-resolution-seconds >= 1200 caused
+        Zope startup to fail.
+
+      - Collector #2169: webdav.Resource.COPY did not send ObjectClonedEvent.
+
+      - Collector #2178: Fix ZopeTestCase doctest support for layers
+
   Zope 2.10.0 beta 2 (2006/08/20)
 
     Bugs Fixed
@@ -71,6 +89,8 @@ Zope Changes
         http://codespeak.net/pipermail/z3-five/2006q2/001474.html
         
       - The defaultView directive now only looks up views, not attributes.
+
+      - Collector #2178: Fix ZopeTestCase doctest support for layers
 
     Other Changes
 
