@@ -1663,6 +1663,128 @@ def test_proxying():
 
     """
 
+class Location(object):
+    __parent__ = None
+
+class ECLocation(ExtensionClass.Base):
+    __parent__ = None
+
+def test___parent__no_wrappers():
+    """
+    Acquisition also works with objects that aren't wrappers, as long
+    as they have __parent__ pointers.  Let's take a hierarchy like
+    z --isParent--> y --isParent--> x:
+
+      >>> x = Location()
+      >>> y = Location()
+      >>> z = Location()
+      >>> x.__parent__ = y
+      >>> y.__parent__ = z
+
+    and some attributes that we want to acquire:
+
+      >>> x.hello = 'world'
+      >>> y.foo = 42
+      >>> z.foo = 43  # this should not be found
+      >>> z.bar = 3.145
+
+    ``aq_acquire`` works we know it from implicit/acquisition wrappers:
+
+      >>> Acquisition.aq_acquire(x, 'hello')
+      'world'
+      >>> Acquisition.aq_acquire(x, 'foo')
+      42
+      >>> Acquisition.aq_acquire(x, 'bar')
+      3.145
+
+    TODO aq_parent, aq_chain
+    """
+
+def test_implicit_wrapper_as___parent__():
+    """
+    Let's do the same test again, only now not all objects are of the
+    same kind and link to each other via __parent__ pointers.  The
+    root is a stupid ExtensionClass object:
+
+      >>> class Root(ExtensionClass.Base):
+      ...     bar = 3.145
+      >>> z = Root()
+
+    The intermediate parent is an object that supports implicit
+    acquisition.  We bind it to the root via the __of__ protocol:
+
+      >>> class ImplWrapper(Acquisition.Implicit):
+      ...     foo = 42
+      >>> y = ImplWrapper().__of__(z)
+
+    The child object is again a simple object with a simple __parent__
+    pointer:
+
+      >>> x = Location()
+      >>> x.hello = 'world'
+      >>> x.__parent__ = y
+
+    ``aq_acquire`` works as expected from implicit/acquisition
+    wrappers:
+
+      >>> Acquisition.aq_acquire(x, 'hello')
+      'world'
+      >>> Acquisition.aq_acquire(x, 'foo')
+      42
+      >>> Acquisition.aq_acquire(x, 'bar')
+      3.145
+
+    Note that also the (implicit) acquisition wrapper has a __parent__
+    pointer, which is automatically computed from the acquisition
+    container (it's identical to aq_parent):
+
+      >>> y.__parent__ is z
+      True
+
+    TODO aq_parent, aq_chain
+    """
+
+def test_explicit_wrapper_as___parent__():
+    """
+    Let's do this test yet another time, with an explicit wrapper:
+
+      >>> class Root(ExtensionClass.Base):
+      ...     bar = 3.145
+      >>> z = Root()
+
+    The intermediate parent is an object that supports implicit
+    acquisition.  We bind it to the root via the __of__ protocol:
+
+      >>> class ExplWrapper(Acquisition.Explicit):
+      ...     foo = 42
+      >>> y = ExplWrapper().__of__(z)
+
+    The child object is again a simple object with a simple __parent__
+    pointer:
+
+      >>> x = Location()
+      >>> x.hello = 'world'
+      >>> x.__parent__ = y
+
+    ``aq_acquire`` works as expected from implicit/acquisition
+    wrappers:
+
+      >>> Acquisition.aq_acquire(x, 'hello')
+      'world'
+      >>> Acquisition.aq_acquire(x, 'foo')
+      42
+      >>> Acquisition.aq_acquire(x, 'bar')
+      3.145
+
+    Note that also the (implicit) acquisition wrapper has a __parent__
+    pointer, which is automatically computed from the acquisition
+    container (it's identical to aq_parent):
+
+      >>> y.__parent__ is z
+      True
+
+    TODO aq_parent, aq_chain
+    """
 
 import unittest
 from zope.testing.doctest import DocTestSuite
