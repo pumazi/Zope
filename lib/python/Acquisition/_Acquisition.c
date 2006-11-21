@@ -113,7 +113,7 @@ typedef struct {
 staticforward PyExtensionClass Wrappertype, XaqWrappertype;
 
 #define isWrapper(O) ((O)->ob_type==(PyTypeObject*)&Wrappertype || \
-		      (O)->ob_type==(PyTypeObject*)&XaqWrappertype)
+                      (O)->ob_type==(PyTypeObject*)&XaqWrappertype)
 #define WRAPPER(O) ((Wrapper*)(O))
 
 static int
@@ -131,9 +131,9 @@ Wrapper__init__(Wrapper *self, PyObject *args, PyObject *kwargs)
   UNLESS(PyArg_ParseTuple(args, "OO:__init__", &obj, &container)) return -1;
 
   if (self == WRAPPER(obj)) {
-  	PyErr_SetString(PyExc_ValueError,
-		"Cannot wrap acquisition wrapper in itself (Wrapper__init__)");
-  	return -1;
+    PyErr_SetString(PyExc_ValueError,
+        "Cannot wrap acquisition wrapper in itself (Wrapper__init__)");
+    return -1;
   }
 
   Py_INCREF(obj);
@@ -166,9 +166,9 @@ __of__(PyObject *inst, PyObject *parent)
       && WRAPPER(r)->container && isWrapper(WRAPPER(r)->container)
       )
     while (WRAPPER(r)->obj && isWrapper(WRAPPER(r)->obj)
-	   && (WRAPPER(WRAPPER(r)->obj)->container == 
-	       WRAPPER(WRAPPER(r)->container)->obj)
-	   )
+           && (WRAPPER(WRAPPER(r)->obj)->container == 
+               WRAPPER(WRAPPER(r)->container)->obj)
+           )
       {
         if (r->ob_refcnt !=1 )
           {
@@ -262,103 +262,103 @@ Wrapper_special(Wrapper *self, char *name, PyObject *oname)
     {
     case 'b':
       if (strcmp(name,"base")==0)
-	{
-	  if (self->obj)
-	    {
-	      r=self->obj;
-	      while (isWrapper(r) && WRAPPER(r)->obj) r=WRAPPER(r)->obj;
-	    }
-	  else r=Py_None;
-	  Py_INCREF(r);
-	  return r;
-	}
+        {
+          if (self->obj)
+            {
+              r=self->obj;
+              while (isWrapper(r) && WRAPPER(r)->obj) r=WRAPPER(r)->obj;
+            }
+          else r=Py_None;
+          Py_INCREF(r);
+          return r;
+        }
       break;
     case 'p':
       if (strcmp(name,"parent")==0)
-	{
-	  if (self->container) r=self->container;
-	  else r=Py_None;
-	  Py_INCREF(r);
-	  return r;
-	}
+        {
+          if (self->container) r=self->container;
+          else r=Py_None;
+          Py_INCREF(r);
+          return r;
+        }
       break;
     case 's':
       if (strcmp(name,"self")==0)
-	{
-	  if (self->obj) r=self->obj;
-	  else r=Py_None;
-	  Py_INCREF(r);
-	  return r;
-	}
+        {
+          if (self->obj) r=self->obj;
+          else r=Py_None;
+          Py_INCREF(r);
+          return r;
+        }
       break;
     case 'e':
       if (strcmp(name,"explicit")==0)
-	{
-	  if (self->ob_type != (PyTypeObject *)&XaqWrappertype)
-	    return newWrapper(self->obj, self->container, 
-			      (PyTypeObject *)&XaqWrappertype);
-	  Py_INCREF(self);
-	  return OBJECT(self);
-	}
+        {
+          if (self->ob_type != (PyTypeObject *)&XaqWrappertype)
+            return newWrapper(self->obj, self->container, 
+                              (PyTypeObject *)&XaqWrappertype);
+          Py_INCREF(self);
+          return OBJECT(self);
+        }
       break;
     case 'a':
       if (strcmp(name,"acquire")==0)
-	{
-	  return Py_FindAttr(OBJECT(self),oname);
-	}
+        {
+          return Py_FindAttr(OBJECT(self),oname);
+        }
       break;
     case 'c':
       if (strcmp(name,"chain")==0)
-	{
-	  if ((r = PyList_New(0)))
-	    while (1)
-	      {
-		if (PyList_Append(r,OBJECT(self)) >= 0)
-		  {
-		    if (isWrapper(self) && self->container) 
-		      {
-			self=WRAPPER(self->container);
-			continue;
-		      }
-		  }
-		else
-		  {
-		    Py_DECREF(r);
-		  }
-		break;
-	      }
-	  return r;
-	}
+        {
+          if ((r = PyList_New(0)))
+            while (1)
+              {
+                if (PyList_Append(r,OBJECT(self)) >= 0)
+                  {
+                    if (isWrapper(self) && self->container) 
+                      {
+                        self=WRAPPER(self->container);
+                        continue;
+                      }
+                  }
+                else
+                  {
+                    Py_DECREF(r);
+                  }
+                break;
+              }
+          return r;
+        }
       break;
     case 'i':
       if (strcmp(name,"inContextOf")==0)
-	{
-	  return Py_FindAttr(OBJECT(self),oname);
-	}
+        {
+          return Py_FindAttr(OBJECT(self),oname);
+        }
       if (strcmp(name,"inner")==0)
-	{
-	  if (self->obj)
-	    {
-	      r=self->obj;
-	      while (isWrapper(r) && WRAPPER(r)->obj) 
-		{
-		  self=WRAPPER(r);
-		  r=WRAPPER(r)->obj;
-		}
-	      r=OBJECT(self);
-	    }
-	  else r=Py_None;
+        {
+          if (self->obj)
+            {
+              r=self->obj;
+              while (isWrapper(r) && WRAPPER(r)->obj) 
+                {
+                  self=WRAPPER(r);
+                  r=WRAPPER(r)->obj;
+                }
+              r=OBJECT(self);
+            }
+          else r=Py_None;
 
-	  Py_INCREF(r);
-	  return r;
-	}
+          Py_INCREF(r);
+          return r;
+        }
       break;
 
     case 'u':
       if (strcmp(name,"uncle")==0)
-	{
-	  return PyString_FromString("Bob");
-	}
+        {
+          return PyString_FromString("Bob");
+        }
       break;
       
     }
@@ -368,7 +368,7 @@ Wrapper_special(Wrapper *self, char *name, PyObject *oname)
 
 static int
 apply_filter(PyObject *filter, PyObject *inst, PyObject *oname, PyObject *r,
-	     PyObject *extra, PyObject *orig)
+             PyObject *extra, PyObject *orig)
 {
   /* Calls the filter, passing arguments.
 
@@ -407,13 +407,13 @@ err:
 
 static PyObject *
 Wrapper_acquire(Wrapper *self, PyObject *oname, 
-		PyObject *filter, PyObject *extra, PyObject *orig,
-		int explicit, int containment);
+                PyObject *filter, PyObject *extra, PyObject *orig,
+                int explicit, int containment);
 
 static PyObject *
 Wrapper_findattr(Wrapper *self, PyObject *oname,
-		PyObject *filter, PyObject *extra, PyObject *orig,
-		int sob, int sco, int explicit, int containment)
+                PyObject *filter, PyObject *extra, PyObject *orig,
+                int sob, int sco, int explicit, int containment)
 {
   PyObject *r, *v, *tb;
   char *name="";
@@ -422,13 +422,13 @@ Wrapper_findattr(Wrapper *self, PyObject *oname,
   if (*name=='a' && name[1]=='q' && name[2]=='_')
     if ((r=Wrapper_special(self, name+3, oname)))
       {
-	if (filter)
-	  switch(apply_filter(filter,OBJECT(self),oname,r,extra,orig))
-	    {
-	    case -1: return NULL;
-	    case 1: return r;
-	    }
-	else return r;
+        if (filter)
+          switch(apply_filter(filter,OBJECT(self),oname,r,extra,orig))
+            {
+            case -1: return NULL;
+            case 1: return r;
+            }
+        else return r;
       }
     else PyErr_Clear();
   else if (*name=='_' && name[1]=='_' && 
@@ -446,74 +446,74 @@ Wrapper_findattr(Wrapper *self, PyObject *oname,
   if (sob && self->obj)
     {
       if (isWrapper(self->obj))
-	{
-	  if (self == WRAPPER(self->obj)) {
-	  	PyErr_SetString(PyExc_RuntimeError,
-			"Recursion detected in acquisition wrapper");
-		return NULL;
-	  }
-	  if ((r=Wrapper_findattr(WRAPPER(self->obj),
-				 oname, filter, extra, orig, 1, 
+        {
+          if (self == WRAPPER(self->obj)) {
+                  PyErr_SetString(PyExc_RuntimeError,
+                        "Recursion detected in acquisition wrapper");
+                return NULL;
+          }
+          if ((r=Wrapper_findattr(WRAPPER(self->obj),
+                                 oname, filter, extra, orig, 1, 
 
-				 /* Search object container if explicit,
-				    or object is implicit acquirer */
-				 explicit ||
-				 self->obj->ob_type == 
-				 (PyTypeObject*)&Wrappertype,
-				  explicit, containment)))
-	    {
-	      if (PyECMethod_Check(r) && PyECMethod_Self(r)==self->obj)
-		ASSIGN(r,PyECMethod_New(r,OBJECT(self)));
-	      else if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
-	      return r;
-	    }
+                                 /* Search object container if explicit,
+                                    or object is implicit acquirer */
+                                 explicit ||
+                                 self->obj->ob_type == 
+                                 (PyTypeObject*)&Wrappertype,
+                                  explicit, containment)))
+            {
+              if (PyECMethod_Check(r) && PyECMethod_Self(r)==self->obj)
+                ASSIGN(r,PyECMethod_New(r,OBJECT(self)));
+              else if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
+              return r;
+            }
 
-	  PyErr_Fetch(&r,&v,&tb);
-	  if (r && (r != PyExc_AttributeError))
-	    {
-	      PyErr_Restore(r,v,tb);
-	      return NULL;
-	    }
-	  Py_XDECREF(r); Py_XDECREF(v); Py_XDECREF(tb);
-	  r=NULL;
-	}
+          PyErr_Fetch(&r,&v,&tb);
+          if (r && (r != PyExc_AttributeError))
+            {
+              PyErr_Restore(r,v,tb);
+              return NULL;
+            }
+          Py_XDECREF(r); Py_XDECREF(v); Py_XDECREF(tb);
+          r=NULL;
+        }
       else if ((r=PyObject_GetAttr(self->obj,oname)))
-	{
-	  if (r==Acquired)
-	    {
-	      Py_DECREF(r);
-	      return Wrapper_acquire(self, oname, filter, extra, orig, 1, 
-				     containment);
-	    }
+        {
+          if (r==Acquired)
+            {
+              Py_DECREF(r);
+              return Wrapper_acquire(self, oname, filter, extra, orig, 1, 
+                                     containment);
+            }
 
-	  if (PyECMethod_Check(r) && PyECMethod_Self(r)==self->obj)
-	    ASSIGN(r,PyECMethod_New(r,OBJECT(self)));
-	  else if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
+          if (PyECMethod_Check(r) && PyECMethod_Self(r)==self->obj)
+            ASSIGN(r,PyECMethod_New(r,OBJECT(self)));
+          else if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
 
-	  if (r && filter)
-	    switch(apply_filter(filter,OBJECT(self),oname,r,extra,orig))
-	      {
-	      case -1: return NULL;
-	      case 1: return r;
-	      }
-	  else return r;
-	}
+          if (r && filter)
+            switch(apply_filter(filter,OBJECT(self),oname,r,extra,orig))
+              {
+              case -1: return NULL;
+              case 1: return r;
+              }
+          else return r;
+        }
       else {
-	PyErr_Fetch(&r,&v,&tb);
-	if (r != PyExc_AttributeError)
-	  {
-	    PyErr_Restore(r,v,tb);
-	    return NULL;
-	  }
-	Py_XDECREF(r); Py_XDECREF(v); Py_XDECREF(tb);
-	r=NULL;
+        PyErr_Fetch(&r,&v,&tb);
+        if (r != PyExc_AttributeError)
+          {
+            PyErr_Restore(r,v,tb);
+            return NULL;
+          }
+        Py_XDECREF(r); Py_XDECREF(v); Py_XDECREF(tb);
+        r=NULL;
       }
       PyErr_Clear();
     }
 
   if (sco && (*name != '_' || explicit)) 
     return Wrapper_acquire(self, oname, filter, extra, orig, explicit, 
-			   containment);
+                           containment);
 
   PyErr_SetObject(PyExc_AttributeError,oname);
   return NULL;
@@ -521,8 +521,8 @@ Wrapper_findattr(Wrapper *self, PyObject *oname,
 
 static PyObject *
 Wrapper_acquire(Wrapper *self, PyObject *oname, 
-		PyObject *filter, PyObject *extra, PyObject *orig,
-		int explicit, int containment)
+                PyObject *filter, PyObject *extra, PyObject *orig,
+                int explicit, int containment)
 {
   PyObject *r;
   int sob=1, sco=1;
@@ -530,54 +530,54 @@ Wrapper_acquire(Wrapper *self, PyObject *oname,
   if (self->container)
     {
       if (isWrapper(self->container))
-	{
-	  if (self->obj && isWrapper(self->obj))
-	    {
-	      /* Try to optimize search by recognizing repeated obs in path */
-	      if (WRAPPER(self->obj)->container==
-		  WRAPPER(self->container)->container) 
-		sco=0;
-	      else if (WRAPPER(self->obj)->container==
-		      WRAPPER(self->container)->obj)  
-		sob=0;
-	   }
+        {
+          if (self->obj && isWrapper(self->obj))
+            {
+              /* Try to optimize search by recognizing repeated obs in path */
+              if (WRAPPER(self->obj)->container==
+                  WRAPPER(self->container)->container) 
+                sco=0;
+              else if (WRAPPER(self->obj)->container==
+                      WRAPPER(self->container)->obj)  
+                sob=0;
+           }
 
-	  r=Wrapper_findattr((Wrapper*)self->container,
-			     oname, filter, extra, orig, sob, sco, explicit, 
-			     containment);
-	  
-	  if (r && has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
-	  return r;
-	}
+          r=Wrapper_findattr((Wrapper*)self->container,
+                             oname, filter, extra, orig, sob, sco, explicit, 
+                             containment);
+          
+          if (r && has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
+          return r;
+        }
       else
-	{
-	  if ((r=PyObject_GetAttr(self->container,oname))) {
-	    if (r == Acquired) {
-	      Py_DECREF(r);
-	    }
-	    else {
-	      if (filter) {
-		switch(apply_filter(filter,self->container,oname,r,
-				    extra,orig))
-		  {
-		  case -1: 
-		    return NULL;
-		  case 1: 
-		    if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
-		    return r;
-		  }
-	      }
-	      else {
-		if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
-		return r;
-	      }
-	    }
-	  }
-	  else {
-	    /* May be AttributeError or some other kind of error */
-	    return NULL;
-	  }
-	}
+        {
+          if ((r=PyObject_GetAttr(self->container,oname))) {
+            if (r == Acquired) {
+              Py_DECREF(r);
+            }
+            else {
+              if (filter) {
+                switch(apply_filter(filter,self->container,oname,r,
+                                    extra,orig))
+                  {
+                  case -1: 
+                    return NULL;
+                  case 1: 
+                    if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
+                    return r;
+                  }
+              }
+              else {
+                if (has__of__(r)) ASSIGN(r,__of__(r,OBJECT(self)));
+                return r;
+              }
+            }
+          }
+          else {
+            /* May be AttributeError or some other kind of error */
+            return NULL;
+          }
+        }
     }
   
   PyErr_SetObject(PyExc_AttributeError, oname);
@@ -630,14 +630,14 @@ Wrapper_setattro(Wrapper *self, PyObject *oname, PyObject *v)
     {
       /* Unwrap passed in wrappers! */
       while (v && isWrapper(v))
-	v=WRAPPER(v)->obj;
+        v=WRAPPER(v)->obj;
 
       if (v) return PyObject_SetAttr(self->obj, oname, v);
       else   return PyObject_DelAttr(self->obj, oname);
     }
 
   PyErr_SetString(PyExc_AttributeError, 
-		  "Attempt to set attribute on empty acquisition wrapper");
+                  "Attempt to set attribute on empty acquisition wrapper");
   return -1;
 }
 
@@ -764,7 +764,7 @@ static PyObject *
 Wrapper_slice(Wrapper *self, int  ilow, int  ihigh)
 {
   return CallMethodO(OBJECT(self),py__getslice__,
-		     Build("(ii)", ilow, ihigh),NULL);
+                     Build("(ii)", ilow, ihigh),NULL);
 }
 
 static int
@@ -773,14 +773,14 @@ Wrapper_ass_item(Wrapper *self, int  i, PyObject *v)
   if (v)
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__setitem__,
-			   Build("(iO)", i, v),NULL))
-	return -1;
+                           Build("(iO)", i, v),NULL))
+        return -1;
     }
   else
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__delitem__,
-			   Build("(i)", i),NULL))
-	return -1;
+                           Build("(i)", i),NULL))
+        return -1;
     }
   Py_DECREF(v);
   return 0;
@@ -792,14 +792,14 @@ Wrapper_ass_slice(Wrapper *self, int  ilow, int  ihigh, PyObject *v)
   if (v)
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__setslice__,
-			   Build("(iiO)", ilow, ihigh, v),NULL))
-	return -1;
+                           Build("(iiO)", ilow, ihigh, v),NULL))
+        return -1;
     }
   else
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__delslice__,
-			   Build("(ii)", ilow, ihigh),NULL))
-	return -1;
+                           Build("(ii)", ilow, ihigh),NULL))
+        return -1;
     }
   Py_DECREF(v);
   return 0;
@@ -818,14 +818,14 @@ Wrapper_contains(Wrapper *self, PyObject *v)
 }
 
 static PySequenceMethods Wrapper_as_sequence = {
-	(inquiry)Wrapper_length,		/*sq_length*/
-	(binaryfunc)Wrapper_add,		/*sq_concat*/
-	(intargfunc)Wrapper_mul,		/*sq_repeat*/
-	(intargfunc)Wrapper_item,		/*sq_item*/
-	(intintargfunc)Wrapper_slice,		/*sq_slice*/
-	(intobjargproc)Wrapper_ass_item,	/*sq_ass_item*/
-	(intintobjargproc)Wrapper_ass_slice,	/*sq_ass_slice*/
-	(objobjproc)Wrapper_contains,		/*sq_contains*/
+        (inquiry)Wrapper_length,                /*sq_length*/
+        (binaryfunc)Wrapper_add,                /*sq_concat*/
+        (intargfunc)Wrapper_mul,                /*sq_repeat*/
+        (intargfunc)Wrapper_item,                /*sq_item*/
+        (intintargfunc)Wrapper_slice,                /*sq_slice*/
+        (intobjargproc)Wrapper_ass_item,        /*sq_ass_item*/
+        (intintobjargproc)Wrapper_ass_slice,        /*sq_ass_slice*/
+        (objobjproc)Wrapper_contains,                /*sq_contains*/
 };
 
 /* -------------------------------------------------------------- */
@@ -844,23 +844,23 @@ Wrapper_ass_sub(Wrapper *self, PyObject *key, PyObject *v)
   if (v)
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__setitem__,
-			   Build("(OO)", key, v),NULL))
-	return -1;
+                           Build("(OO)", key, v),NULL))
+        return -1;
     }
   else
     {
       UNLESS(v=CallMethodO(OBJECT(self),py__delitem__,
-			   Build("(O)", key),NULL))
-	return -1;
+                           Build("(O)", key),NULL))
+        return -1;
     }
   Py_XDECREF(v);
   return 0;
 }
 
 static PyMappingMethods Wrapper_as_mapping = {
-  (inquiry)Wrapper_length,		/*mp_length*/
-  (binaryfunc)Wrapper_subscript,	/*mp_subscript*/
-  (objobjargproc)Wrapper_ass_sub,	/*mp_ass_subscript*/
+  (inquiry)Wrapper_length,              /*mp_length*/
+  (binaryfunc)Wrapper_subscript,        /*mp_subscript*/
+  (objobjargproc)Wrapper_ass_sub,       /*mp_ass_subscript*/
 };
 
 /* -------------------------------------------------------------- */
@@ -1034,29 +1034,29 @@ Wrapper_nonzero(Wrapper *self)
 }
 
 static PyNumberMethods Wrapper_as_number = {
-	(binaryfunc)Wrapper_add,	/*nb_add*/
-	(binaryfunc)Wrapper_sub,	/*nb_subtract*/
-	(binaryfunc)Wrapper_mul,	/*nb_multiply*/
-	(binaryfunc)Wrapper_div,	/*nb_divide*/
-	(binaryfunc)Wrapper_mod,	/*nb_remainder*/
-	(binaryfunc)Wrapper_divmod,	/*nb_divmod*/
-	(ternaryfunc)Wrapper_pow,	/*nb_power*/
-	(unaryfunc)Wrapper_neg,		/*nb_negative*/
-	(unaryfunc)Wrapper_pos,		/*nb_positive*/
-	(unaryfunc)Wrapper_abs,		/*nb_absolute*/
-	(inquiry)Wrapper_nonzero,	/*nb_nonzero*/
-	(unaryfunc)Wrapper_invert,	/*nb_invert*/
-	(binaryfunc)Wrapper_lshift,	/*nb_lshift*/
-	(binaryfunc)Wrapper_rshift,	/*nb_rshift*/
-	(binaryfunc)Wrapper_and,	/*nb_and*/
-	(binaryfunc)Wrapper_xor,	/*nb_xor*/
-	(binaryfunc)Wrapper_or,		/*nb_or*/
-	(coercion)Wrapper_coerce,	/*nb_coerce*/
-	(unaryfunc)Wrapper_int,		/*nb_int*/
-	(unaryfunc)Wrapper_long,	/*nb_long*/
-	(unaryfunc)Wrapper_float,	/*nb_float*/
-	(unaryfunc)Wrapper_oct,		/*nb_oct*/
-	(unaryfunc)Wrapper_hex,		/*nb_hex*/
+        (binaryfunc)Wrapper_add,        /*nb_add*/
+        (binaryfunc)Wrapper_sub,        /*nb_subtract*/
+        (binaryfunc)Wrapper_mul,        /*nb_multiply*/
+        (binaryfunc)Wrapper_div,        /*nb_divide*/
+        (binaryfunc)Wrapper_mod,        /*nb_remainder*/
+        (binaryfunc)Wrapper_divmod,     /*nb_divmod*/
+        (ternaryfunc)Wrapper_pow,       /*nb_power*/
+        (unaryfunc)Wrapper_neg,         /*nb_negative*/
+        (unaryfunc)Wrapper_pos,         /*nb_positive*/
+        (unaryfunc)Wrapper_abs,         /*nb_absolute*/
+        (inquiry)Wrapper_nonzero,       /*nb_nonzero*/
+        (unaryfunc)Wrapper_invert,      /*nb_invert*/
+        (binaryfunc)Wrapper_lshift,     /*nb_lshift*/
+        (binaryfunc)Wrapper_rshift,     /*nb_rshift*/
+        (binaryfunc)Wrapper_and,        /*nb_and*/
+        (binaryfunc)Wrapper_xor,        /*nb_xor*/
+        (binaryfunc)Wrapper_or,         /*nb_or*/
+        (coercion)Wrapper_coerce,       /*nb_coerce*/
+        (unaryfunc)Wrapper_int,         /*nb_int*/
+        (unaryfunc)Wrapper_long,        /*nb_long*/
+        (unaryfunc)Wrapper_float,       /*nb_float*/
+        (unaryfunc)Wrapper_oct,         /*nb_oct*/
+        (unaryfunc)Wrapper_hex,         /*nb_hex*/
 };
 
 
@@ -1064,7 +1064,7 @@ static PyNumberMethods Wrapper_as_number = {
 
 
 static char *acquire_args[] = {"object", "name", "filter", "extra", "explicit",
-			       "default", "containment", NULL};
+                               "default", "containment", NULL};
 
 static PyObject *
 Wrapper_acquire_method(Wrapper *self, PyObject *args, PyObject *kw)
@@ -1076,9 +1076,9 @@ Wrapper_acquire_method(Wrapper *self, PyObject *args, PyObject *kw)
   PyObject *result; /* DM 2005-08-25: argument "default" ignored */
 
   UNLESS (PyArg_ParseTupleAndKeywords(
-	     args, kw, "O|OOOOi", acquire_args+1,
-	     &name, &filter, &extra, &explicit, &defalt, &containment
-	     ))
+             args, kw, "O|OOOOi", acquire_args+1,
+             &name, &filter, &extra, &explicit, &defalt, &containment
+             ))
     return NULL;
 
   if (expl) explicit=PyObject_IsTrue(expl);
@@ -1088,14 +1088,14 @@ Wrapper_acquire_method(Wrapper *self, PyObject *args, PyObject *kw)
   /* DM 2005-08-25: argument "default" ignored -- fix it! */
 # if 0
   return Wrapper_findattr(self,name,filter,extra,OBJECT(self),1,
-			  explicit || 
-			  self->ob_type==(PyTypeObject*)&Wrappertype,
-			  explicit, containment);
+                          explicit || 
+                          self->ob_type==(PyTypeObject*)&Wrappertype,
+                          explicit, containment);
 # else
   result = Wrapper_findattr(self,name,filter,extra,OBJECT(self),1,
-			  explicit || 
-			  self->ob_type==(PyTypeObject*)&Wrappertype,
-			  explicit, containment);
+                          explicit || 
+                          self->ob_type==(PyTypeObject*)&Wrappertype,
+                          explicit, containment);
   if (result == NULL && defalt != NULL) {
     /* as "Python/bltinmodule.c:builtin_getattr" turn
        only 'AttributeError' into a default value, such
@@ -1188,30 +1188,30 @@ static struct PyMethodDef Wrapper_methods[] = {
    "Wrappers are not picklable"},
   {"__reduce_ex__", (PyCFunction)Wrappers_are_not_picklable, METH_VARARGS,
    "Wrappers are not picklable"},
-  {NULL,		NULL}		/* sentinel */
+  {NULL,                NULL}                /* sentinel */
 };
 
 static PyExtensionClass Wrappertype = {
   PyObject_HEAD_INIT(NULL)
-  0,					/*ob_size*/
-  "ImplicitAcquirerWrapper",		/*tp_name*/
-  sizeof(Wrapper),       		/*tp_basicsize*/
-  0,					/*tp_itemsize*/
+  0,                                     /*ob_size*/
+  "ImplicitAcquirerWrapper",             /*tp_name*/
+  sizeof(Wrapper),                       /*tp_basicsize*/
+  0,                                     /*tp_itemsize*/
   /* methods */
-  (destructor)Wrapper_dealloc,		/*tp_dealloc*/
-  (printfunc)0,				/*tp_print*/
-  (getattrfunc)0,			/*tp_getattr*/
-  (setattrfunc)0,			/*tp_setattr*/
-  (cmpfunc)Wrapper_compare,    		/*tp_compare*/
-  (reprfunc)Wrapper_repr,      		/*tp_repr*/
-  &Wrapper_as_number,			/*tp_as_number*/
-  &Wrapper_as_sequence,			/*tp_as_sequence*/
-  &Wrapper_as_mapping,			/*tp_as_mapping*/
-  (hashfunc)Wrapper_hash,      		/*tp_hash*/
-  (ternaryfunc)Wrapper_call,		/*tp_call*/
-  (reprfunc)Wrapper_str,       		/*tp_str*/
-  (getattrofunc)Wrapper_getattro,	/*tp_getattr with object key*/
-  (setattrofunc)Wrapper_setattro,      	/*tp_setattr with object key*/
+  (destructor)Wrapper_dealloc,           /*tp_dealloc*/
+  (printfunc)0,                          /*tp_print*/
+  (getattrfunc)0,                        /*tp_getattr*/
+  (setattrfunc)0,                        /*tp_setattr*/
+  (cmpfunc)Wrapper_compare,              /*tp_compare*/
+  (reprfunc)Wrapper_repr,                /*tp_repr*/
+  &Wrapper_as_number,                    /*tp_as_number*/
+  &Wrapper_as_sequence,                  /*tp_as_sequence*/
+  &Wrapper_as_mapping,                   /*tp_as_mapping*/
+  (hashfunc)Wrapper_hash,                /*tp_hash*/
+  (ternaryfunc)Wrapper_call,             /*tp_call*/
+  (reprfunc)Wrapper_str,                 /*tp_str*/
+  (getattrofunc)Wrapper_getattro,        /*tp_getattr with object key*/
+  (setattrofunc)Wrapper_setattro,        /*tp_setattr with object key*/
   /* tp_as_buffer      */ 0,
   /* tp_flags          */ Py_TPFLAGS_DEFAULT 
                           | Py_TPFLAGS_BASETYPE
@@ -1237,25 +1237,25 @@ static PyExtensionClass Wrappertype = {
 
 static PyExtensionClass XaqWrappertype = {
   PyObject_HEAD_INIT(NULL)
-  0,					/*ob_size*/
-  "ExplicitAcquirerWrapper",		/*tp_name*/
-  sizeof(Wrapper),       		/*tp_basicsize*/
-  0,					/*tp_itemsize*/
+  0,                                     /*ob_size*/
+  "ExplicitAcquirerWrapper",             /*tp_name*/
+  sizeof(Wrapper),                       /*tp_basicsize*/
+  0,                                     /*tp_itemsize*/
   /* methods */
-  (destructor)Wrapper_dealloc,		/*tp_dealloc*/
-  (printfunc)0,				/*tp_print*/
-  (getattrfunc)0,			/*tp_getattr*/
-  (setattrfunc)0,			/*tp_setattr*/
-  (cmpfunc)Wrapper_compare,    		/*tp_compare*/
-  (reprfunc)Wrapper_repr,      		/*tp_repr*/
-  &Wrapper_as_number,			/*tp_as_number*/
-  &Wrapper_as_sequence,			/*tp_as_sequence*/
-  &Wrapper_as_mapping,			/*tp_as_mapping*/
-  (hashfunc)Wrapper_hash,      		/*tp_hash*/
-  (ternaryfunc)Wrapper_call,		/*tp_call*/
-  (reprfunc)Wrapper_str,       		/*tp_str*/
-  (getattrofunc)Xaq_getattro,		/*tp_getattr with object key*/
-  (setattrofunc)Wrapper_setattro,      	/*tp_setattr with object key*/
+  (destructor)Wrapper_dealloc,           /*tp_dealloc*/
+  (printfunc)0,                          /*tp_print*/
+  (getattrfunc)0,                        /*tp_getattr*/
+  (setattrfunc)0,                        /*tp_setattr*/
+  (cmpfunc)Wrapper_compare,              /*tp_compare*/
+  (reprfunc)Wrapper_repr,                /*tp_repr*/
+  &Wrapper_as_number,                    /*tp_as_number*/
+  &Wrapper_as_sequence,                  /*tp_as_sequence*/
+  &Wrapper_as_mapping,                   /*tp_as_mapping*/
+  (hashfunc)Wrapper_hash,                /*tp_hash*/
+  (ternaryfunc)Wrapper_call,             /*tp_call*/
+  (reprfunc)Wrapper_str,                 /*tp_str*/
+  (getattrofunc)Xaq_getattro,            /*tp_getattr with object key*/
+  (setattrofunc)Wrapper_setattro,        /*tp_setattr with object key*/
   /* tp_as_buffer      */ 0,
   /* tp_flags          */ Py_TPFLAGS_DEFAULT 
                           | Py_TPFLAGS_BASETYPE
@@ -1289,8 +1289,8 @@ acquire_of(PyObject *self, PyObject *args)
   UNLESS(PyExtensionInstance_Check(inst))
     {
       PyErr_SetString(PyExc_TypeError,
-		      "attempt to wrap extension method using an object that\n"
-		      "is not an extension class instance.");
+                      "attempt to wrap extension method using an object that\n"
+                      "is not an extension class instance.");
       return NULL;
     }
 
@@ -1307,8 +1307,8 @@ xaq_of(PyObject *self, PyObject *args)
   UNLESS(PyExtensionInstance_Check(inst))
     {
       PyErr_SetString(PyExc_TypeError,
-		      "attempt to wrap extension method using an object that\n"
-		      "is not an extension class instance.");
+                      "attempt to wrap extension method using an object that\n"
+                      "is not an extension class instance.");
       return NULL;
     }
 
@@ -1319,18 +1319,18 @@ static struct PyMethodDef Acquirer_methods[] = {
   {"__of__",(PyCFunction)acquire_of, METH_VARARGS, 
    "__of__(context) -- return the object in a context"},
   
-  {NULL,		NULL}		/* sentinel */
+  {NULL,                NULL}                /* sentinel */
 };
 
 static struct PyMethodDef Xaq_methods[] = {
   {"__of__",(PyCFunction)xaq_of, METH_VARARGS,""},
   
-  {NULL,		NULL}		/* sentinel */
+  {NULL,                NULL}                /* sentinel */
 };
 
 static PyObject *
 capi_aq_acquire(PyObject *self, PyObject *name, PyObject *filter,
-	PyObject *extra, int explicit, PyObject *defalt, int containment)
+        PyObject *extra, int explicit, PyObject *defalt, int containment)
 {
   
   PyObject *result;
@@ -1340,10 +1340,10 @@ capi_aq_acquire(PyObject *self, PyObject *name, PyObject *filter,
   /* We got a wrapped object, so business as usual */
   if (isWrapper(self)) 
     return Wrapper_findattr(
-	      WRAPPER(self), name, filter, extra, OBJECT(self),1,
-	      explicit || 
-	      WRAPPER(self)->ob_type==(PyTypeObject*)&Wrappertype,
-	      explicit, containment);
+              WRAPPER(self), name, filter, extra, OBJECT(self),1,
+              explicit || 
+              WRAPPER(self)->ob_type==(PyTypeObject*)&Wrappertype,
+              explicit, containment);
   
   /* Not wrapped and no filter, so just getattr */
   if (! filter) return PyObject_GetAttr(self, name);
@@ -1353,7 +1353,7 @@ capi_aq_acquire(PyObject *self, PyObject *name, PyObject *filter,
     return NULL;
   
   result=Wrapper_findattr(WRAPPER(self), name, filter, extra, OBJECT(self),
-			   1, 1, explicit, containment);
+                           1, 1, explicit, containment);
 
   /* get rid of temp wrapper */
   Py_DECREF(self);
@@ -1370,15 +1370,15 @@ module_aq_acquire(PyObject *ignored, PyObject *args, PyObject *kw)
   int explicit=1, containment=0;
 
   UNLESS (PyArg_ParseTupleAndKeywords(
-	     args, kw, "OO|OOOOi", acquire_args,
-	     &self, &name, &filter, &extra, &expl, &defalt, &containment
-	     ))
+             args, kw, "OO|OOOOi", acquire_args,
+             &self, &name, &filter, &extra, &expl, &defalt, &containment
+             ))
     return NULL;
 
   if (expl) explicit=PyObject_IsTrue(expl);
 
   return capi_aq_acquire(self, name, filter, extra, explicit, defalt,
-  	containment);
+          containment);
 }
 
 static PyObject *
@@ -1388,7 +1388,7 @@ capi_aq_get(PyObject *self, PyObject *name, PyObject *defalt, int containment)
   /* We got a wrapped object, so business as usual */
   if (isWrapper(self)) 
     result=Wrapper_findattr(WRAPPER(self), name, 0, 0, OBJECT(self), 1, 1, 1, 
-		       containment);
+                       containment);
   else
     result=PyObject_GetAttr(self, name);
 
@@ -1410,14 +1410,14 @@ module_aq_get(PyObject *r, PyObject *args)
   int containment=0;
   
   UNLESS (PyArg_ParseTuple(args, "OO|Oi", 
-			   &self, &name, &defalt, &containment
-			   )) return NULL;
+                           &self, &name, &defalt, &containment
+                           )) return NULL;
   return capi_aq_get(self, name, defalt, containment);
 }
 
 static int 
 capi_aq_iswrapper(PyObject *self) {
-	return isWrapper(self);
+        return isWrapper(self);
 }
 
 static PyObject *
@@ -1434,7 +1434,7 @@ capi_aq_base(PyObject *self)
     {
       result=WRAPPER(self)->obj;
       while (isWrapper(result) && WRAPPER(result)->obj)
-      	result=WRAPPER(result)->obj;
+              result=WRAPPER(result)->obj;
     }
   else result=Py_None;
   Py_INCREF(result);
@@ -1456,7 +1456,7 @@ capi_aq_parent(PyObject *self)
   PyObject *result=Py_None;
 
   if (isWrapper(self) && WRAPPER(self)->container)
-  	result=WRAPPER(self)->container;
+          result=WRAPPER(self)->container;
 
   Py_INCREF(result);
   return result;
@@ -1511,10 +1511,10 @@ capi_aq_inner(PyObject *self)
     {
       result=WRAPPER(self)->obj;
       while (isWrapper(result) && WRAPPER(result)->obj) 
-	{
-	  self=result;
-	  result=WRAPPER(result)->obj;
-	}
+        {
+          self=result;
+          result=WRAPPER(result)->obj;
+        }
       result=self;
     }
   else result=Py_None;
@@ -1542,24 +1542,24 @@ capi_aq_chain(PyObject *self, int containment)
   while (1)
     {
       if (isWrapper(self))
-	{
-	  if (WRAPPER(self)->obj)
-	    {
-	      if (containment)
-		while (WRAPPER(self)->obj && isWrapper(WRAPPER(self)->obj))
-		  self=WRAPPER(self)->obj;
-	      if (PyList_Append(result,OBJECT(self)) < 0)
-		goto err;
-	    }
-	  if (WRAPPER(self)->container) 
-	    {
-	      self=WRAPPER(self)->container;
-	      continue;
-	    }
-	}
+        {
+          if (WRAPPER(self)->obj)
+            {
+              if (containment)
+                while (WRAPPER(self)->obj && isWrapper(WRAPPER(self)->obj))
+                  self=WRAPPER(self)->obj;
+              if (PyList_Append(result,OBJECT(self)) < 0)
+                goto err;
+            }
+          if (WRAPPER(self)->container) 
+            {
+              self=WRAPPER(self)->container;
+              continue;
+            }
+        }
       else
-	if (PyList_Append(result, self) < 0)
-	  goto err;
+        if (PyList_Append(result, self) < 0)
+          goto err;
 
       break;
     }
@@ -1603,7 +1603,7 @@ static struct PyMethodDef methods[] = {
   {"aq_chain", (PyCFunction)module_aq_chain, METH_VARARGS, 
    "aq_chain(ob [, containment]) -- "
    "Get a list of objects in the acquisition environment"},
-  {NULL,	NULL}
+  {NULL,        NULL}
 };
 
 void
@@ -1625,13 +1625,14 @@ init_Acquisition(void)
 
   UNLESS(Acquired=PyString_FromStringAndSize(NULL,42)) return;
   strcpy(PyString_AsString(Acquired),
-	 "<Special Object Used to Force Acquisition>");
+         "<Special Object Used to Force Acquisition>");
 
   /* Create the module and add the functions */
   m = Py_InitModule4("_Acquisition", methods,
-	   "Provide base classes for acquiring objects\n\n"
-	   "$Id$\n",
-		     OBJECT(NULL),PYTHON_API_VERSION);
+           "Provide base classes for acquiring objects\n\n"
+           "$Id$\n",
+                
+     OBJECT(NULL),PYTHON_API_VERSION);
 
   d = PyModule_GetDict(m);
   init_py_names();
