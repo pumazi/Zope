@@ -3,17 +3,122 @@ Zope Changes
   This file contains change information for the current Zope release.
   Change information for previous versions of Zope can be found in the
   file HISTORY.txt.
-  
-  after Zope 2.10.0 beta 2 (unreleased)
+
+  Zope 2.10.2 (unreleased)
 
     Bugs fixed
+
+      - Fixed Collector #2190: Calls to
+        zope.security.management.checkPermission aren't rerouted to
+        Zope 2's security policy.
+
+        NOTE: If you already have a Zope 2.10 instance running, you
+        will either have to recreate it or add the following lines to
+        the end of the etc/site.zcml file::
+
+          <securityPolicy
+                component="Products.Five.security.FiveSecurityPolicy" />
+
+      - Fixed Collector #2223: Evaluation of booleans in TALES and the
+        'default' variable.
+
+      - Reverted backward-incompatible fix for Collector #2191.
+
+      - Fixed the creation of lib/python/Zope2/version.txt
+
+      - added Python 2.4.4 as optimal Python version to 'configure'
+
+      - the ZopePageTemplate implementation now uses unicode
+        internally.  Non-unicode instances are migrated on-the-fly to
+        unicode. However this will work only properly for ZPT
+        instances formerly encoded as utf-8 or ISO-8859-15. For other
+        encodings you might set the environment variable
+        ZPT_REFERRED_ENCODING to insert your preferred encoding in
+        front of utf-8 and ISO-8859-15 within the encoding sniffer
+        code. In addition there is a new 'output_encodings' property
+        that controls the conversion from/to unicode for WebDAV/FTP
+        operations.
+
+      - the ZPT implementation has now a configurable option in order
+        how to deal with UnicodeDecodeErrors. A custom
+        UnicodeEncodingConflictResolver can be configured through ZCML
+        (see Products/PageTemplates/(configure.zcml,
+        unicodeconflictresolver.py, interfaces.py)
+
+      - the ZPT implementation has now a configurable option in order
+        how to deal with UnicodeDecodeErrors. A custom
+        UnicodeEncodingConflictResolver can be configured through ZCML
+        (see Products/PageTemplates/(configure.zcml,
+        unicodeconflictresolver.py, interfaces.py)
+
+  Zope 2.10.1 (2006-11-22)
+
+    Bugs fixed
+
+      - Collector #2191: extended DateTime parser for better support
+        to the ISO8601 specification.
+
+      - Reworking of _cached_result in Shared.DC.ZRDB.DA.DA:
+
+        - fixed KeyError reported in Collector #2212
+
+        - fixed two memory leaks that occurred under high load
+
+        - fixed broken cache keys for people using the obscure 
+          Shared.DC.ZRDB.DA.DA.connection_hook
+
+        - fixed incorrect cache ordering resulting in newer results
+          being dumped when the cache became too large.
+
+      - Collector #2232: Can't call DTML templates from Page Templates
+
+      - Collector #2213: Can't edit "old" ZopePageTemplate instances.
+
+      - Collector #2237: 'make' doesn't tell you to run 'make inplace'
+        before running 'make instance'.
+
+      - Collector #2235: A number of ZCatalog methods were doing boolean
+        evaluation of objects that implemented __len__ instead of checking
+        them against None. Replaced a number of "if not obj" with
+        "if obj is None".
+
+      - Collector #2208: rewriting/setting the 'charset' part of the
+        content-type HTTP header will be done only for 'text/*'
+
+      - Collector #2209: ZTUtils module could not be used inside ZPT
+
+      - Collector #2206: Set PYTHONPATH to include existing PYTHONPATH
+        in skel/bin/zopectl.in and skel/bin/runzope.in
+
+
+  Zope 2.10.0 (2006/10/04)
+
+    Bugs fixed
+
+  
+  Zope 2.10.0 RC 1 (2006/09/25)
+
+    Bugs fixed
+
+      - Call setDefaultSkin on new requests created as the result of
+        ConflictError retries.
+
+      - Collector #2187: PUT_factory broken
+      
+  Zope 2.10.0 beta 2 (2006/09/17)
+
+    Bugs fixed
+
+      - Collector #2117: Don't choke in 'unrestrictedTraverse' for '+'
+        path elements.
 
       - Collector #2185: Log username for FCGI requests.
 
       - Collector #2152: Fixed MailHost documentation; simple_send does not
         process or validate its arguments in any way.
 
-      - Collector #2175: ZTUtils.make_hidden_input did not escape double-quotes.
+      - Collector #2175: ZTUtils.make_hidden_input did not escape
+        double-quotes.
 
       - Collector #2176: Fixed bad logging call.
 

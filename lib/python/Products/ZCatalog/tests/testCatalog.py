@@ -28,6 +28,7 @@ import OFS.Application
 from AccessControl.SecurityManagement import setSecurityManager
 from AccessControl.SecurityManagement import noSecurityManager
 from AccessControl import Unauthorized
+from Acquisition import Implicit
 from Products.ZCatalog import Vocabulary
 from Products.ZCatalog.Catalog import Catalog
 from Products.ZCatalog.Catalog import CatalogError
@@ -159,6 +160,39 @@ class zdummyFalse(zdummy):
     def __nonzero__(self):
         return False
 
+# make objects with failing __len__ and __nonzero__
+class dummyLenFail(zdummy):
+    def __init__(self, num, fail):
+        zdummy.__init__(self, num)
+        self.fail = fail
+
+    def __len__(self):
+        self.fail("__len__() was called")
+
+class dummyNonzeroFail(zdummy):
+    def __init__(self, num, fail):
+        zdummy.__init__(self, num)
+        self.fail = fail
+
+    def __nonzero__(self):
+        self.fail("__nonzero__() was called")
+
+class FakeTraversalError(KeyError):
+    """fake traversal exception for testing"""
+
+class fakeparent(Implicit):
+    # fake parent mapping unrestrictedTraverse to
+    # catalog.resolve_path as simulated by TestZCatalog
+    def __init__(self, d):
+        self.d = d
+
+    marker = object()
+
+    def unrestrictedTraverse(self, path, default=marker):
+        result = self.d.get(path, default)
+        if result is self.marker:
+            raise FakeTraversalError(path)
+        return result
 
 class TestZCatalog(unittest.TestCase):
 
@@ -246,6 +280,46 @@ class TestZCatalog(unittest.TestCase):
         result = self._catalog(title='9999')
         self.assertEquals(1, len(result))
 
+    def testBooleanEvalOn_manage_catalogObject(self):
+        self.d['11'] = dummyLenFail(11, self.fail)
+        self.d['12'] = dummyNonzeroFail(12, self.fail)
+        # create a fake response that doesn't bomb on manage_catalogObject()
+        class myresponse:
+            def redirect(self, url):
+                pass
+        # this next call should not fail
+        self._catalog.manage_catalogObject(None, myresponse(), 'URL1', urls=('11', '12'))
+
+    def testBooleanEvalOn_refreshCatalog_getobject(self):
+        # wrap catalog under the fake parent providing unrestrictedTraverse()
+        catalog = self._catalog.__of__(fakeparent(self.d))
+        # replace entries to test refreshCatalog
+        self.d['0'] = dummyLenFail(0, self.fail)
+        self.d['1'] = dummyNonzeroFail(1, self.fail)
+        # this next call should not fail
+        catalog.refreshCatalog()
+
+        for uid in ('0', '1'):
+            rid = catalog.getrid(uid)
+            # neither should these
+            catalog.getobject(rid)
+
+    def test_getobject_doesntMaskTraversalErrorsAndDoesntDelegateTo_resolve_url(self):
+        # wrap catalog under the fake parent providing unrestrictedTraverse()
+        catalog = self._catalog.__of__(fakeparent(self.d))
+        # make resolve_url fail if ZCatalog falls back on it
+        def resolve_url(path, REQUEST):
+            self.fail(".resolve_url() should not be called by .getobject()")
+        catalog.resolve_url = resolve_url
+
+        # traversal should work at first
+        rid0 = catalog.getrid('0')
+        # lets set it up so the traversal fails
+        del self.d['0']
+        self.assertRaises(FakeTraversalError, catalog.getobject, rid0, REQUEST=object())
+        # and if there is a None at the traversal point, that's where it should return
+        self.d['0'] = None
+        self.assertEquals(catalog.getobject(rid0), None)
 
 class dummy(ExtensionClass.Base):
     att1 = 'att1'

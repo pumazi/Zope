@@ -38,9 +38,9 @@ MKDIR=mkdir -p
 # default:     The default step (invoked when make is called without a target)
 default: build
 	@echo
-	@echo Zope built.  Next, do \'make install\' \(or \'make instance\'
-	@echo to run a Zope instance directly from the build directory\).
-	@echo
+	@echo Zope built.  Next, do \'make install\' \(or \'make inplace\',
+	@echo followed by \'make instance\' to run a Zope instance directly
+	@echo from the build directory\).
 
 # build:       Do whatever 'setup.py build' implies
 build:
@@ -81,7 +81,7 @@ test: inplace
 
 # instance:    Do an inplace build and create an instance home in the resulting
 #              software home.
-instance: build
+instance: build version_txt
 	${PYTHON} "${BASE_DIR}/utilities/mkzopeinstance.py" ${MKZ_FLAGS}
 
 # testinst:    Perform an inplace build and create an instance home in the
@@ -110,13 +110,15 @@ clean: unbuild
 # version_txt: create a version file in lib/python/version.txt
 version_txt:
 	printf "Zope ${MAJOR_VERSION}.${MINOR_VERSION}-${RELEASE_TAG}" >\
-          "${BASE_DIR}/lib/python/version.txt"
+          "${BASE_DIR}/lib/python/Zope2/version.txt"
 
 sdist: clobber sdist_tgz
 
 # sdist_tgz:   Create a tgz archive file as a source distribution.
 #
 sdist_tgz: version_txt
+	${FIND} . -type f -exec chmod a+r {} \; 
+	${FIND} . -type d -exec chmod a+rx {} \; 
 	${MKDIR} ${TMPDIR}
 	${CD} ${TMPDIR} && ${LN} ${BASE_DIR} ${PACKAGE_NAME} && \
           ${TAR} czfh ${BASE_DIR}/${PACKAGE_NAME}.tgz \

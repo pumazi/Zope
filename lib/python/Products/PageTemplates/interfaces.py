@@ -10,23 +10,21 @@
 # FOR A PARTICULAR PURPOSE
 #
 ##############################################################################
-"""Package wrapper for Page Templates
 
-This wrapper allows the Page Template modules to be segregated in a
-separate package.
+from zope.interface import Interface
 
-$Id$
-"""
+class IUnicodeEncodingConflictResolver(Interface):
+    """ A utility that tries to convert a non-unicode string into
+       a Python unicode by implementing some policy in order
+       to figure out a possible encoding - either through the
+       calling context, the location or the system environment
+    """
 
-# Placeholder for Zope Product data
-misc_ = {}
+    def resolve(context, text, expression):
+        """ Returns 'text' as unicode string. 
+            'context' is the current context object.
+            'expression' is the original expression (can be used for 
+            logging purposes)
+        """
 
-# import ZTUtils in order to make i importable through
-# ZopeGuards.load_module() where an importable modules must be
-# available in sys.modules
-import ZTUtils
 
-def initialize(context):
-    # Import lazily, and defer initialization to the module
-    import ZopePageTemplate
-    ZopePageTemplate.initialize(context)

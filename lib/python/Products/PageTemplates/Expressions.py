@@ -17,6 +17,11 @@ for Python expressions, string literals, and paths.
 
 $Id$
 """
+
+import logging
+
+from zope.component import getUtility
+from zope.component.interfaces import ComponentLookupError
 from zope.interface import implements
 from zope.tales.tales import Context, Iterator
 from zope.tales.expressions import PathExpr, StringExpr, NotExpr
@@ -31,12 +36,16 @@ import OFS.interfaces
 from MultiMapping import MultiMapping
 from Acquisition import aq_base
 from zExceptions import NotFound, Unauthorized
+
 from Products.Five.browser.providerexpression import Z2ProviderExpression
 from Products.PageTemplates import ZRPythonExpr
 from Products.PageTemplates.DeferExpr import LazyExpr
 from Products.PageTemplates.GlobalTranslationService import getGlobalTranslationService
+from Products.PageTemplates.interfaces import IUnicodeEncodingConflictResolver
 
 SecureModuleImporter = ZRPythonExpr._SecureModuleImporter()
+
+LOG = logging.getLogger('Expressions')
 
 # BBB 2005/05/01 -- remove after 12 months
 import zope.deprecation
@@ -89,7 +98,7 @@ def render(ob, ns):
         if callable(base):
             try:
                 if getattr(base, 'isDocTemp', 0):
-                    ob = call_with_ns(ob, ns, 2)
+                    ob = ZRPythonExpr.call_with_ns(ob, ns, 2)
                 else:
                     ob = ob()
             except AttributeError, n:
@@ -172,6 +181,60 @@ class ZopeContext(Context):
         return getGlobalTranslationService().translate(
             domain, msgid, mapping=mapping,
             context=context, default=default)
+
+    def evaluateBoolean(self, expr):
+        value = self.evaluate(expr)
+        # here we override the normal Zope 3 behaviour.  Zope 3
+        # doesn't care about the default in a boolean expression,
+        # while we do (Zope 2 legacy, see the
+        # BooleanAttributesAndDefault.html test case)
+        if value is self.getDefault():
+            return value
+        return bool(value)
+
+    def evaluateText(self, expr):
+        """ customized version in order to get rid of unicode
+            errors for all and ever
+        """
+        text = self.evaluate(expr)
+
+        if text is self.getDefault() or text is None:
+            # XXX: should be unicode???
+            return text
+
+        if isinstance(text, unicode):
+            # we love unicode, nothing to do
+            return text
+
+        elif isinstance(text, str):
+            # bahh...non-unicode string..we need to convert it to unicode
+
+            # catch ComponentLookupError in order to make tests shut-up.
+            # This should not be a problem since it won't change the old
+            # default behavior
+
+            try:
+                resolver = getUtility(IUnicodeEncodingConflictResolver)
+            except ComponentLookupError:    
+                return unicode(text)
+
+            try:
+                return resolver.resolve(self.contexts['context'], text, expr)
+            except UnicodeDecodeError,e:
+                LOG.error("""UnicodeDecodeError detected for expression "%s"\n"""
+                          """Resolver class: %s\n"""
+                          """Exception text: %s\n"""
+                          """Template: %s\n"""
+                          """Rendered text: %r"""  % \
+                          (expr, resolver.__class__, e, 
+                            self.contexts['template'].absolute_url(1), text))
+                raise 
+        else:
+
+            # This is a weird culprit ...calling unicode() on non-string
+            # objects
+            return unicode(text)
+
 
 class ZopeEngine(zope.app.pagetemplate.engine.ZopeEngine):
 
