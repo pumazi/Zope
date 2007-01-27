@@ -338,14 +338,14 @@ class HTTPResponse(BaseResponse):
         isHTML = self.isHTML(self.body)
         if not self.headers.has_key('content-type'):
             if isHTML:
-                c = 'text/html; charset=%s' % default_encoding
+                c = 'text/html; charset=%s' % getattr(self, 'default_encoding', default_encoding)
             else:
-                c = 'text/plain; charset=%s' % default_encoding
+                c = 'text/plain; charset=%s' % getattr(self, 'default_encoding', default_encoding)
             self.setHeader('content-type', c)
         else:
             c = self.headers['content-type']
             if c.startswith('text/') and not 'charset=' in  c:
-                c = '%s; charset=%s' % (c, default_encoding)                
+                c = '%s; charset=%s' % (c, getattr(self, 'default_encoding', default_encoding))                
                 self.setHeader('content-type', c)
 
         # Some browsers interpret certain characters in Latin 1 as html
@@ -442,38 +442,47 @@ class HTTPResponse(BaseResponse):
         return self.use_HTTP_content_compression
 
     def _encode_unicode(self,body,
-                        charset_re=re.compile(r'(?:application|text)/[-+0-9a-z]+\s*;\s*' +
+                        charset_re=re.compile(r'((?:application|text)/[-+0-9a-z]+)\s*;\s*' +
                                               r'charset=([-_0-9a-z]+' +
                                               r')(?:(?:\s*;)|\Z)',
                                               re.IGNORECASE)):
 
         def fix_xml_preamble(body, encoding):
-            """ fixes the encoding in the XML preamble according
-                to the charset specified in the content-type header.
+            """ Either fix the 'encoding' of the XML preamble
+                or ensure that the XML startswith a premable.
             """
+
+            preamble = u'<?xml version="1.0" encoding="%s" ?>' % encoding 
 
             if body.startswith('<?xml'):
                 pos_right = body.find('?>')  # right end of the XML preamble
-                body = ('<?xml version="1.0" encoding="%s" ?>' % encoding) + body[pos_right+2:]
-            return body
+                return preamble + body[pos_right+2:]
+            else:
+                return preamble + body
 
         # Encode the Unicode data as requested
 
-        ct = self.headers.get('content-type')
-        if ct:
-            match = charset_re.match(ct)
-            if match:
-                encoding = match.group(1)
-                body = body.encode(encoding)
-                body = fix_xml_preamble(body, encoding)
-                return body
+        content_type = self.headers.get('content-type')
+        if content_type:
+
+            mo = charset_re.match(content_type)
+            if mo:
+                ct = mo.group(1)
+                encoding = mo.group(2)
             else:
-                if ct.startswith('text/') or ct.startswith('application/'):
-                    self.headers['content-type'] = '%s; charset=%s' % (ct, default_encoding)
+                ct = content_type
+                encoding = getattr(self, 'default_encoding', default_encoding)
+
+            if ct == 'text/xml':
+                body = fix_xml_preamble(body, encoding)
+                self.headers['content-type'] = '%s; charset=%s' % (ct, encoding)
+                return body.encode(encoding)
+            else:
+                self.headers['content-type'] = '%s; charset=%s' % (ct, encoding)
+                return body.encode(encoding)
 
         # Use the default character encoding
-        body = body.encode(default_encoding, 'replace')
-        body = fix_xml_preamble(body, default_encoding)
+        body = body.encode(getattr(self, 'default_encoding', default_encoding), 'replace')
         return body
 
     def setBase(self,base):

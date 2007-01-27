@@ -41,7 +41,7 @@ from Products.PageTemplates.PageTemplateFile import guess_type
 from Products.PageTemplates.Expressions import SecureModuleImporter
 
 from Products.PageTemplates.utils import encodingFromXMLPreamble, \
-         charsetFromMetaEquiv, convertToUnicode
+         charsetFromMetaEquiv, convertToUnicode, removeXMLPreamble
             
 
 preferred_encodings = ['utf-8', 'iso-8859-15']
@@ -160,6 +160,8 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
                                                content_type, 
                                                preferred_encodings)
             output_encoding = encoding
+        if content_type in ('text/xml',):
+            text = removeXMLPreamble(text)
 
         # for content updated through WebDAV, FTP 
         if not keep_output_encoding:
@@ -231,8 +233,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
             text = file.read()
 
         content_type = guess_type(filename, text)   
-#        if not content_type in ('text/html', 'text/xml'):
-#            raise ValueError('Unsupported mimetype: %s' % content_type)
 
         self.pt_edit(text, content_type)
         return self.pt_editForm(manage_tabs_message='Saved changes')
@@ -293,6 +293,9 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
                                               self.content_type,
                                               preferred_encodings)
             self.output_encoding = encoding
+
+        if self.content_type in ('text/xml',):
+            text = removeXMLPreamble(text)
 
         self.ZCacheable_invalidate()
         ZopePageTemplate.inheritedAttribute('write')(self, text)
@@ -359,8 +362,19 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
     security.declareProtected(ftp_access, 'manage_FTPget')
     def manage_FTPget(self):
         "Get source for FTP download"
+
         result = self.pt_render()
-        return result.encode(self.output_encoding)
+        if self.content_type in ('text/xml', ):
+            result = '<?xml version="1.0" encoding="%s"?>\n' \
+                     % self.output_encoding + result
+
+        try:
+            return result.encode(self.output_encoding)
+        except UnicodeDecodeError:
+            raise PTRuntimeError('Unicode string could not be converted to '
+                                 'configured output encoding (%s)' % \
+                                 self.output_encoding)
+
 
     security.declareProtected(view_management_screens, 'html')
     def html(self):
@@ -409,7 +423,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
             # acquisition context, so we don't know where it is. :-(
             return None
 
-
     def __setstate__(self, state):
         # Perform on-the-fly migration to unicode.
         # Perhaps it might be better to work with the 'generation' module 
@@ -422,10 +435,12 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
             state['output_encoding'] = encoding
         self.__dict__.update(state) 
 
-
     def pt_render(self, source=False, extra_context={}):
         result = PageTemplate.pt_render(self, source, extra_context)
         assert isinstance(result, unicode)
+#        if self.content_type in ('text/xml', ):
+#            result = u'<?xml version="1.0" encoding="%s"?>\n' \
+#                     % self.output_encoding + result
         return result
 
 
@@ -458,7 +473,6 @@ def manage_addPageTemplate(self, id, title='', text='', encoding='utf-8',
             content_type = headers['content_type']
         else:
             content_type = guess_type(filename, text) 
-
 
     else:
         if hasattr(text, 'read'):

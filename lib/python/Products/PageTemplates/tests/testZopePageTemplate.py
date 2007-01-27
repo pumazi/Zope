@@ -19,7 +19,8 @@ from zope.publisher.http import HTTPCharsets
 from Testing.makerequest import makerequest
 from Testing.ZopeTestCase import ZopeTestCase, installProduct
 from Products.PageTemplates.ZopePageTemplate import ZopePageTemplate, manage_addPageTemplate
-from Products.PageTemplates.utils import encodingFromXMLPreamble, charsetFromMetaEquiv
+from Products.PageTemplates.utils import encodingFromXMLPreamble, charsetFromMetaEquiv, \
+                      removeXMLPreamble
 from zope.component import provideUtility
 from Products.PageTemplates.interfaces import IUnicodeEncodingConflictResolver
 from Products.PageTemplates.unicodeconflictresolver import PreferredCharsetResolver
@@ -249,6 +250,12 @@ class ZPTRegressions(unittest.TestCase):
         # no object is returned when REQUEST is passed.
         pt = self.app.pt1
         self.assertEqual(pt.document_src(), self.text)
+
+    def testRemoveXMLPreamble(self):
+        xml = '<?xml version="1.0"?><foo>bar</foo>'
+        self.assertEqual(removeXMLPreamble(xml), '<foo>bar</foo>')
+        xml = '<foo>bar</foo>'
+        self.assertEqual(removeXMLPreamble(xml), xml)
 
 
 class ZPTMacros(zope.component.testing.PlacelessSetup, unittest.TestCase):

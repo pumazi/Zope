@@ -86,3 +86,10 @@ def convertToUnicode(source, content_type, preferred_encodings):
 
     return unicode(source), None
 
+
+def removeXMLPreamble(xml):
+    """ Remove the preamble """
+    if xml.startswith('<?'):
+        rpos = xml.find('?>')
+        xml = xml[rpos+2:]
+    return xml
