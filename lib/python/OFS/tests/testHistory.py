@@ -69,8 +69,8 @@ class HistoryTests(unittest.TestCase):
             self.failUnless('tid' in entry) 
             self.failUnless('time' in entry) 
             if i:
-                # check times are increasing
-                self.failUnless(entry['time']<r[i-1]['time'])
+                # check times are increasing or at least equal
+                self.failUnless(entry['time']<=r[i-1]['time'])
             self.assertEqual(entry['user_name'],'')
             self.assertEqual(entry['version'],'')
             
