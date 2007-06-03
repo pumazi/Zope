@@ -1,7 +1,16 @@
 import unittest
 from urllib import quote_plus
 
-class AuthCredentialsTests( unittest.TestCase ):
+TEST_LARGEFILE_DATA = '''
+--12345
+Content-Disposition: form-data; name="file"; filename="file"
+Content-Type: application/octet-stream
+
+test %s
+
+''' % ('test' * 1000)
+
+class AuthCredentialsTestsa( unittest.TestCase ):
 
     def _getTargetClass(self):
         from ZPublisher.HTTPRequest import HTTPRequest
@@ -684,6 +693,17 @@ class RequestTests( unittest.TestCase ):
         req.close()
         self.assertEqual(start_count, sys.getrefcount(s))  # The test
 
+    def testFileName(self):
+        # checks fileupload object supports the filename
+        from StringIO import StringIO
+        s = StringIO(TEST_LARGEFILE_DATA)
+        env = TEST_ENVIRON.copy()
+        from ZPublisher.HTTPRequest import HTTPRequest
+        req = HTTPRequest(s, env, None)
+        req.processInputs()
+        f = req.form.get('file')
+        self.assert_(f.name)
+
     def testFileIterator(self):
         # checks fileupload object supports the iterator protocol
         # collector entry 1837
@@ -739,25 +759,6 @@ class RequestTests( unittest.TestCase ):
         from zope.publisher.base import DebugFlags
         self.assertEqual(getDebug(request), '1')
         self.assert_(isinstance(getDebugFromZope3(request), DebugFlags))
-        
-    def testMethod(self):
-        TEST_ENVIRON = {
-            'REQUEST_METHOD': 'GET',
-            'SERVER_NAME': 'localhost',
-            'SERVER_PORT': '80',
-            }
-        from StringIO import StringIO
-        from ZPublisher.HTTPRequest import HTTPRequest
-        s = StringIO('')
-
-        env = TEST_ENVIRON.copy()
-        request = HTTPRequest(s, env, None)
-        self.assertEqual(request.method, 'GET')
-        
-        env = TEST_ENVIRON.copy()
-        env['REQUEST_METHOD'] = 'post'
-        request = HTTPRequest(s, env, None)
-        self.assertEqual(request.method, 'POST')
 
     def testTrustedProxies(self):
         TEST_ENVIRON = {
@@ -793,7 +794,7 @@ class RequestTests( unittest.TestCase ):
 
 def test_suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(AuthCredentialsTests, 'test'))
+    suite.addTest(unittest.makeSuite(AuthCredentialsTestsa, 'test'))
     suite.addTest(unittest.makeSuite(RecordTests, 'test'))
     suite.addTest(unittest.makeSuite(ProcessInputsTests, 'test'))
     suite.addTest(unittest.makeSuite(RequestTests, 'test'))
