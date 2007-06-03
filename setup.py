@@ -390,9 +390,6 @@ ext_modules = [
     Extension(name = 'persistent.TimeStamp',
               sources= ['persistent/TimeStamp.c']
               ),
-    Extension(name = 'ZODB.winlock',
-              sources = ['ZODB/winlock.c']
-              ),
 
     #zope
     Extension("zope.proxy._zope_proxy_proxy",
