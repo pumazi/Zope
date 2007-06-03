@@ -51,6 +51,10 @@ Zope Changes
 
     Features added
 
+      - integrated ZODB 3.8
+    
+      - integraed Zope 3.4
+
       - Support for using zopectl on Windows has been added. All commands are
         supported and there are two Windows specific ones: install and remove,
         which install or remove the Windows service. The start, stop and
