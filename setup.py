@@ -476,15 +476,9 @@ TimeStamp = Extension(name = 'persistent.TimeStamp',
                       sources= ['persistent/TimeStamp.c']
                       )
 
-winlock = Extension(name = 'ZODB.winlock',
-                    include_dirs = include,
-                    sources = ['ZODB/winlock.c']
-                    )
-
 ext_modules += [cPersistence,
          cPickleCache,
          TimeStamp,
-         winlock,
         ]
 
 # We're using the module docstring as the distutils descriptions.
