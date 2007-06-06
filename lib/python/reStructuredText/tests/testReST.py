@@ -1,6 +1,7 @@
 # -*- coding: iso-8859-15 -*-
 
 import unittest
+import cgi
 
 from reStructuredText import HTML
 
@@ -18,6 +19,15 @@ Von Vögeln und Öfen
 - text
 
 """
+
+
+docutils_include_warning = '''\
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">&lt;string&gt;</tt>, line 2)</p>
+<p>&quot;include&quot; directive disabled.</p>'''
+
+docutils_raw_warning = '''\
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">&lt;string&gt;</tt>, line 1)</p>
+<p>&quot;raw&quot; directive disabled.</p>'''
 
 
 class TestReST(unittest.TestCase):
@@ -84,39 +94,49 @@ text
 
     def test_include_directive_raises(self):
         source = 'hello world\n .. include:: /etc/passwd'
-        self.assertRaises(NotImplementedError, HTML, source)
+        result = HTML(source)
+
+        # The include: directive hasn't been rendered, it remains
+        # verbatimly in the rendered output.  Instead a warning
+        # message is presented:
+        self.assert_(docutils_include_warning in result)
 
     def test_raw_directive_disabled(self):
-
         EXPECTED = '<h1>HELLO WORLD</h1>'
-
         source = '.. raw:: html\n\n  %s\n' % EXPECTED
         result = HTML(source)       # don't raise, but don't work either
-        self.failIf(EXPECTED in result)
 
-        self.failUnless("&quot;raw&quot; directive disabled" in result)
-        from cgi import escape
-        self.failUnless(escape(EXPECTED) in result)
+        # The raw: directive hasn't been rendered, it remains
+        # verbatimly in the rendered output.  Instead a warning
+        # message is presented:
+        self.assert_(EXPECTED not in result)
+        self.assert_(cgi.escape(EXPECTED) in result)
+        self.assert_(docutils_raw_warning in result)
 
     def test_raw_directive_file_option_raises(self):
-
         source = '.. raw:: html\n  :file: inclusion.txt'
-        self.assertRaises(NotImplementedError, HTML, source)
+        result = HTML(source)
+
+        # The raw: directive hasn't been rendered, it remains
+        # verbatimly in the rendered output.  Instead a warning
+        # message is presented:
+        self.assert_(docutils_raw_warning in result)
 
     def test_raw_directive_url_option_raises(self):
-
         source = '.. raw:: html\n  :url: http://www.zope.org'
-        self.assertRaises(NotImplementedError, HTML, source)
+        result = HTML(source)
 
+        # The raw: directive hasn't been rendered, it remains
+        # verbatimly in the rendered output.  Instead a warning
+        # message is presented:
+        self.assert_(docutils_raw_warning in result)
 
     def test_csv_table_file_option_raise(self):
-
         source = '.. csv-table:: \n  :file: inclusion.txt'
         result = HTML(source)
         self.failUnless('File and URL access deactivated' in result)
 
     def test_csv_table_url_option_raise(self):
-
         source = '.. csv-table:: \n  :url: http://www.evil.org'
         result = HTML(source)
         self.failUnless('File and URL access deactivated' in result)
