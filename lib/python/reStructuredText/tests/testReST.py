@@ -2,8 +2,8 @@
 
 import unittest
 import cgi
-
-from reStructuredText import HTML
+from docutils.core import publish_parts
+from reStructuredText import HTML, Warnings
 
 
 txt = """Hello World
@@ -91,14 +91,27 @@ text
         output = HTML(input)
         self.assertEquals(output, expected) 
 
+    def test_file_insertion_off_by_default(self):
+        directive = '.. include:: /etc/passwd'
+        source = 'hello world\n %s' % directive
+        parts = publish_parts(source=source, writer_name='html4css1',
+                              settings_overrides={'warning_stream': Warnings()})
+
+        # The include: directive hasn't been rendered, it remains
+        # verbatimly in the rendered output.  Instead a warning
+        # message is presented:
+        self.assert_(directive in parts['body'])
+        self.assert_(docutils_include_warning in parts['body'])
 
     def test_include_directive_raises(self):
-        source = 'hello world\n .. include:: /etc/passwd'
+        directive = '.. include:: /etc/passwd'
+        source = 'hello world\n %s' % directive
         result = HTML(source)
 
         # The include: directive hasn't been rendered, it remains
         # verbatimly in the rendered output.  Instead a warning
         # message is presented:
+        self.assert_(directive in result)
         self.assert_(docutils_include_warning in result)
 
     def test_raw_directive_disabled(self):
@@ -120,6 +133,7 @@ text
         # The raw: directive hasn't been rendered, it remains
         # verbatimly in the rendered output.  Instead a warning
         # message is presented:
+        self.assert_(source in result)
         self.assert_(docutils_raw_warning in result)
 
     def test_raw_directive_url_option_raises(self):
@@ -129,6 +143,7 @@ text
         # The raw: directive hasn't been rendered, it remains
         # verbatimly in the rendered output.  Instead a warning
         # message is presented:
+        self.assert_(source in result)
         self.assert_(docutils_raw_warning in result)
 
     def test_csv_table_file_option_raise(self):
