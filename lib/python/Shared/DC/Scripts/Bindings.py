@@ -182,8 +182,9 @@ class UnauthorizedBinding:
             if name == '__parent__':
                 # XXX For some reason the test in testBindings calls __parent__
                 # for bound_used_context_methodWithRoles_ps.
-                # I couldn't figure out why it tries that, but guess that it
-                # tried aq_parent so far.
+                # I couldn't figure out why it tries that. So far it tried to
+                # call methodWithRoles twice. Now it's only called once and
+                # __parent__ is called the second time.
                 pass
             else:
                 self.__you_lose()
