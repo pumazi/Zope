@@ -175,19 +175,18 @@ class UnauthorizedBinding:
     def __repr__(self):
         return '<UnauthorizedBinding: %s>' % self._name
 
+    def __parent__(self):
+        # Acquisition will nowadays try to do an getattr on all objects which
+        # aren't Acquisition wrappers asking for a __parent__ pointer. We need
+        # to provide a fake one, or our normal __getattr__ method will be used
+        # and fail as __parent__ starts with a __.
+        return None
+
     def __getattr__(self, name, default=None):
         # Make *extra* sure that the wrapper isn't used to access
         # __call__, etc.
         if name.startswith('__'):
-            if name == '__parent__':
-                # XXX For some reason the test in testBindings calls __parent__
-                # for bound_used_context_methodWithRoles_ps.
-                # I couldn't figure out why it tries that. So far it tried to
-                # call methodWithRoles twice. Now it's only called once and
-                # __parent__ is called the second time.
-                pass
-            else:
-                self.__you_lose()
+            self.__you_lose()
 
         return guarded_getattr(self._wrapped, name, default)
         #return getattr(self._wrapped, name, default)
