@@ -172,13 +172,6 @@ class UnauthorizedBinding:
     __allow_access_to_unprotected_subobjects__ = 1
     __roles__ = _what_not_even_god_should_do
 
-    # Acquisition will nowadays try to do an getattr on all objects which
-    # aren't Acquisition wrappers, asking for a __parent__ pointer. We need
-    # to provide a fake one, or our normal __getattr__ method will be used
-    # and fail as __parent__ starts with a __.
-
-    __parent__ = None
-
     def __repr__(self):
         return '<UnauthorizedBinding: %s>' % self._name
 
@@ -186,6 +179,12 @@ class UnauthorizedBinding:
         # Make *extra* sure that the wrapper isn't used to access
         # __call__, etc.
         if name.startswith('__'):
+            # Acquisition will nowadays try to do an getattr on all objects which
+            # aren't Acquisition wrappers, asking for a __parent__ pointer. We
+            # don't want to fail in this case but simply raise an AttributeError.
+            if name in ('__parent__', '__name__'):
+                raise AttributeError
+
             self.__you_lose()
 
         return guarded_getattr(self._wrapped, name, default)
