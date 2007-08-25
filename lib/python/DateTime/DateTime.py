@@ -1716,6 +1716,7 @@ class DateTime:
 
         Dates are output as: YYYY-MM-DD HH:MM:SS
         """
+        # MIGRATED
         fmt = '%Y-%m-%d %H:%M:%S'
         return self._D.strftime(fmt)
 
@@ -1732,7 +1733,7 @@ class DateTime:
         The HTML4 method below offers the same formatting, but converts
         to UTC before returning the value and sets the TZD "Z".
         """
-
+        #MIGRATED
         fmt = '%Y-%m-%dT%H:%M:%S'
 
         # ATT: Fix replace('Etc/',...)
@@ -1751,10 +1752,12 @@ class DateTime:
            T, Z are literal characters.
            The time is in UTC.
         """
-        newdate = self.toZone('UTC')
-        return "%0.4d-%0.2d-%0.2dT%0.2d:%0.2d:%0.2dZ" % (
-            newdate._year, newdate._month, newdate._day,
-            newdate._hour, newdate._minute, newdate._second)
+
+        # MIGRATED
+        fmt = '%Y-%m-%dT%H:%M:%SZ'
+        utc_date = datetime(*self._D.utctimetuple()[:6])
+        return utc_date.strftime(fmt)
+
 
     def __add__(self,other):
         """A DateTime may be added to a number and a number may be
@@ -1934,21 +1937,18 @@ class DateTime:
 
         See: http://www.tondering.dk/claus/cal/node3.html#sec-calcjd
         """
-        a = (14 - self._month)/12 #integer division, discard remainder
-        y = self._year + 4800 - a
-        m = self._month + (12*a) - 3
-        return self._day + (153*m+2)/5 + 365*y + y/4 - y/100 + y/400 - 32045
+
+        # MIGRATED
+        a = (14 - self._D.month) / 12      #integer division, discard remainder
+        y = self._D.year + 4800 - a
+        m = self._D.month + (12 * a) - 3
+        return self._D.day + (153*m+2)/5 + 365*y + y/4 - y/100 + y/400 - 32045
 
     def week(self):
-        """Return the week number according to ISO.
+        """Return the week number according to ISO."""
+        # MIGRATED 
+        return self._D.isocalendar()[1]
 
-        See: http://www.tondering.dk/claus/cal/node6.html#SECTION00670000000000000000
-        """
-        J = self.JulianDay()
-        d4 = (J + 31741 - (J % 7)) % 146097 % 36524 % 1461
-        L = d4/1460
-        d1 = (( d4 - L) % 365) + L
-        return d1/7 + 1
 
     def encode(self, out):
         """Encode value for XML-RPC."""
