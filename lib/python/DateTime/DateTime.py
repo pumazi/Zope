@@ -16,9 +16,10 @@ __version__='$Revision: 1.99 $'[11:-2]
 
 
 import re, math,  DateTimeZone
-from time import time, gmtime, localtime
+from time import time, gmtime, localtime, mktime
 from time import daylight, timezone, altzone, strftime
 from datetime import datetime
+from pytz import timezone
 from interfaces import IDateTime
 from interfaces import DateTimeError, SyntaxError, DateError, TimeError
 from zope.interface import implements
@@ -549,13 +550,23 @@ class DateTime:
 
             # try to create a datetime instance either from the timestamp
             # or directly using the constructor (since self._t might be
-            # out-of-range for time_t
+            # out-of-range for time_t. We use pytz to convert the timezone
+            # Note that pytz obviously used different timezone names like
+            # 'Etc/GMT+02'
 
             try:
-                self._D = datetime.fromtimestamp(self._t)
+                tzinfo = timezone(self._tz)
+            except:
+                # ATT: capture errors
+                tzinfo = timezone('Etc/' + self._tz)
+
+
+
+            try:
+                self._D = datetime.fromtimestamp(self._t, tzinfo=tzinfo)
             except:
                 self._D = datetime(self.year(), self.month(), self.day(),
-                                   self.hour(), self.minute(), self.second())
+                                   self.hour(), self.minute(), self.second(), tzinfo=tzinfo)
             return result
         except (DateError, TimeError, DateTimeError):
             raise
@@ -1594,7 +1605,9 @@ class DateTime:
         ds = datetime(zself._year, zself._month, zself._day, zself._hour,
                zself._minute, int(zself._nearsec),
                microseconds).strftime(format)
-        return format_is_unicode and unicode(ds, 'utf-8') or ds
+        res = format_is_unicode and unicode(ds, 'utf-8') or ds
+        print repr(res), repr(self._D.strftime(format))
+        return res
 
     # General formats from previous DateTime
     def Date(self):
@@ -1703,9 +1716,8 @@ class DateTime:
 
         Dates are output as: YYYY-MM-DD HH:MM:SS
         """
-        return "%.4d-%.2d-%.2d %.2d:%.2d:%.2d" % (
-            self._year, self._month, self._day,
-            self._hour, self._minute, self._second)
+        fmt = '%Y-%m-%d %H:%M:%S'
+        return self._D.strftime(fmt)
 
     def ISO8601(self):
         """Return the object in ISO 8601-compatible format containing the
@@ -1720,10 +1732,14 @@ class DateTime:
         The HTML4 method below offers the same formatting, but converts
         to UTC before returning the value and sets the TZD "Z".
         """
-        tzoffset = _tzoffset2iso8601zone(_tzoffset(self._tz, self._t))
-        return "%0.4d-%0.2d-%0.2dT%0.2d:%0.2d:%0.2d%s" % (
-            self._year, self._month, self._day,
-            self._hour, self._minute, self._second, tzoffset)
+
+        fmt = '%Y-%m-%dT%H:%M:%S'
+
+        # ATT: Fix replace('Etc/',...)
+        tzoffset = _tzoffset2iso8601zone(_tzoffset(self._D.tzinfo.zone.replace('Etc/', ''),
+                                         mktime(self._D.utctimetuple())))
+        return self._D.strftime(fmt) + tzoffset
+
 
     def HTML4(self):
         """Return the object in the format used in the HTML4.0 specification,
