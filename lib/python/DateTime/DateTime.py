@@ -561,9 +561,8 @@ class DateTime:
                 tzinfo = timezone('Etc/' + self._tz)
 
 
-
             try:
-                self._D = datetime.fromtimestamp(self._t, tzinfo=tzinfo)
+                self._D = datetime.fromtimestamp(self._t, tz=tzinfo)
             except:
                 self._D = datetime(self.year(), self.month(), self.day(),
                                    self.hour(), self.minute(), self.second(), tzinfo=tzinfo)
