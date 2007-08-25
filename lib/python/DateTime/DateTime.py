@@ -544,7 +544,19 @@ class DateTime:
         """Return a new date-time object"""
 
         try:
-            return self._parse_args(*args, **kw)
+            result = self._parse_args(*args, **kw)
+
+
+            # try to create a datetime instance either from the timestamp
+            # or directly using the constructor (since self._t might be
+            # out-of-range for time_t
+
+            try:
+                self._D = datetime.fromtimestamp(self._t)
+            except:
+                self._D = datetime(self.year(), self.month(), self.day(),
+                                   self.hour(), self.minute(), self.second())
+            return result
         except (DateError, TimeError, DateTimeError):
             raise
         except:
@@ -1828,6 +1840,13 @@ class DateTime:
             raise SyntaxError, (
                 'Not an ISO 8601 compliant date string: "%s"' % s)
 
+
+    def __setstate__(self, state):
+
+        self.__dict__.update(state)
+        if not state.has_key('_D'):
+            self._D = datetime.fromtimestamp(self._t)
+        
     def __parse_iso8601(self,s):
         """Parse an ISO 8601 compliant date.
 
