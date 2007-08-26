@@ -19,6 +19,7 @@ import re, math,  DateTimeZone
 from time import time, gmtime, localtime, mktime
 from time import daylight, timezone, altzone, strftime
 from datetime import datetime
+import calendar
 from pytz import timezone
 from interfaces import IDateTime
 from interfaces import DateTimeError, SyntaxError, DateError, TimeError
@@ -43,6 +44,9 @@ try:
     from time import tzname
 except:
     tzname=('UNKNOWN','UNKNOWN')
+    
+def fixTZ(tz):
+    return tz.replace('Etc/', '')
 
 # To control rounding errors, we round system time to the nearest
 # millisecond.  Then delicate calculations can rely on that the
@@ -1458,27 +1462,32 @@ class DateTime:
         """Return true if the current year (in the context of the
         object\'s timezone) is a leap year.
         """
-        return self._year%4==0 and (self._year%100!=0 or self._year%400==0)
+        # MIGRATED
+        return calendar.isleap(self._D.year)
 
     def dayOfYear(self):
         """Return the day of the year, in context of the timezone
         representation of the object.
         """
-        d=int(self._d+(_tzoffset(self._tz, self._t)/86400.0))
-        return int((d+jd1901)-_julianday(self._year,1,0))
-
+        # MIGRATED
+        tp = mktime((self._D.year, self._D.month, self._D.day, 0, 0 ,0 , 0, 0, 0))
+        return localtime(tp)[7]
+        
 
     # Component access
     def parts(self):
         """Return a tuple containing the calendar year, month,
         day, hour, minute second and timezone of the object.
         """
+        # MIGRATION IS TRICKY (doctests will fail...possibly a
+        # bug in the timezone parser....)
         return self._year, self._month, self._day, self._hour, \
                self._minute, self._second, self._tz
 
     def timezone(self):
         """Return the timezone in which the object is represented."""
-        return self._tz
+        # MIGRATED
+        return fixTZ(self._D.tzinfo.zone)
 
     def tzoffset(self):
         """Return the timezone offset for the objects timezone."""
@@ -1486,14 +1495,17 @@ class DateTime:
 
     def year(self):
         """Return the calendar year of the object."""
+        # TRICKY, possibly called within the datetime migrator :->
         return self._year
 
     def month(self):
         """Return the month of the object as an integer."""
+        # TRICKY, possibly called within the datetime migrator :->
         return self._month
 
     def Month(self):
         """Return the full month name."""
+        # TRICKY, possibly called within the datetime migrator :->
         return self._fmon
 
     def aMonth(self):
