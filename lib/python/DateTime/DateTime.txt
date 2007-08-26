@@ -757,7 +757,7 @@ Two DateTimes cannot be added:
   >>> dt + dt
   Traceback (most recent call last):
   ...
-  DateTimeError: Cannot add two DateTimes
+  DateTimeError: Cannot add two DateTime instances
 
 Either a DateTime or a number may be subtracted from a DateTime,
 however, a DateTime may not be subtracted from a number:

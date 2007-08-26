@@ -18,7 +18,7 @@ import copy
 import re, math,  DateTimeZone
 from time import time, gmtime, localtime, mktime
 from time import daylight, timezone, altzone, strftime
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 from pytz import timezone
 from interfaces import IDateTime
@@ -536,8 +536,8 @@ class DateTime:
     implements(IDateTime)
 
     # For security machinery:
-    __roles__=None
-    __allow_access_to_unprotected_subobjects__=1
+    __roles__ = None
+    __allow_access_to_unprotected_subobjects__ =1
 
     # Make class-specific exceptions available as attributes.
     DateError = DateError
@@ -1788,12 +1788,15 @@ class DateTime:
         return utc_date.strftime(fmt)
 
 
-    def __add__(self,other):
+    def __add__(self, other):
         """A DateTime may be added to a number and a number may be
         added to a DateTime;  two DateTimes cannot be added.
         """
-        if hasattr(other,'_t'):
-            raise DateTimeError,'Cannot add two DateTimes'
+        if issubclass(other.__class__, DateTime):
+            raise DateTimeError('Cannot add two DateTime instances')
+        # ATT: using datetime...needs migration back to DateTime
+#        new_date = self._D + timedelta(days=other)
+
         o=float(other)
         tz = self._tz
         t = (self._t + (o*86400.0))
@@ -1802,6 +1805,7 @@ class DateTime:
         ms = t - math.floor(t)
         x = _calcDependentSecond(tz, t)
         yr,mo,dy,hr,mn,sc = _calcYMDHMS(x, ms)
+
         return self.__class__(yr,mo,dy,hr,mn,sc,self._tz,t,d,s)
 
     __radd__=__add__
@@ -1824,25 +1828,21 @@ class DateTime:
         """Convert a DateTime to a string that looks like a Python
         expression.
         """
-        return '%s(\'%s\')' % (self.__class__.__name__,str(self))
+        return '%s(\'%s\')' % (self.__class__.__name__, str(self))
 
     def __str__(self):
-        """Convert a DateTime to a string."""
-        y,m,d = self._year,self._month,self._day
-        h,mn,s,t = self._hour,self._minute,self._second,self._tz
-        if h == mn == s == 0:
-            # hh:mm:ss all zero -- suppress the time.
-            return '%4.4d/%2.2d/%2.2d' % (y, m, d)
-        elif s == int(s):
-            # A whole number of seconds -- suppress milliseconds.
-            return '%4.4d/%2.2d/%2.2d %2.2d:%2.2d:%2.2d %s' % (
-                    y, m, d, h, mn, s, t)
+        """Convert a DateTime to a string.
+        """
+        # MIGRATED
+        year, month, day, hour, minute, second = self._D.timetuple()[:6]
+        tz = fixTZ(self._D.tzinfo.zone)
+        if hour == minute == second == 0:
+            return '%04d/%02d/%02d' % (year, month, day)
         else:
-            # s is already rounded to the nearest millisecond, and
-            # it's not a whole number of seconds.  Be sure to print
-            # 2 digits before the decimal point.
-            return '%4.4d/%2.2d/%2.2d %2.2d:%2.2d:%06.3f %s' % (
-                    y, m, d, h, mn, s, t)
+            s = '%04d/%02d/%02d %02d:%02d:%02d' % (year, month, day, hour, minute, second)
+            if tz: 
+                s += ' ' + tz
+            return s 
 
     def __cmp__(self,obj):
         """Compare a DateTime with another DateTime object, or a
@@ -1896,11 +1896,12 @@ class DateTime:
         return float(self._t)
 
     def _parse_iso8601(self,s):
+        
+        # MIGRATED - nothing to do
         try:
             return self.__parse_iso8601(s)
         except IndexError:
-            raise SyntaxError(
-                'Not an ISO 8601 compliant date string: "%s"' % s)
+            raise SyntaxError('Not an ISO 8601 compliant date string: "%s"' % s)
 
 
     def __setstate__(self, state):
@@ -2010,7 +2011,3 @@ class strftimeFormatter:
         return self._dt.strftime(self._f)
 
 
-# Module methods
-def Timezones():
-    """Return the list of recognized timezone names"""
-    return _cache._zlst
