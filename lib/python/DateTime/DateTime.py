@@ -1615,51 +1615,65 @@ class DateTime:
                zself._minute, int(zself._nearsec),
                microseconds).strftime(format)
         res = format_is_unicode and unicode(ds, 'utf-8') or ds
-        print repr(res), repr(self._D.strftime(format))
+        
+        res2 = self._D.strftime(format)
+#        if res2 != res:
+#            print 'Fehler:', repr(res), repr(self._D.strftime(format))
+            
         return res
 
     # General formats from previous DateTime
     def Date(self):
         """Return the date string for the object."""
-        return "%s/%2.2d/%2.2d" % (self._year, self._month, self._day)
+        # MIGRATED
+        return self._D.strftime('%Y/%m/%d')
 
     def Time(self):
         """Return the time string for an object to the nearest second."""
-        return '%2.2d:%2.2d:%2.2d' % (self._hour,self._minute,self._nearsec)
+        # MIGRATED
+        return self._D.strftime('%H:%M:%S')
 
     def TimeMinutes(self):
         """Return the time string for an object not showing seconds."""
-        return '%2.2d:%2.2d' % (self._hour,self._minute)
+        # MIGRATED
+        return self._D.strftime('%H:%M')
 
     def AMPM(self):
         """Return the time string for an object to the nearest second."""
-        return '%2.2d:%2.2d:%2.2d %s' % (
-                self._pmhour,self._minute,self._nearsec,self._pm)
+        # MIGRATED
+        return self._D.strftime('%I:%M:%S %p')
 
     def AMPMMinutes(self):
         """Return the time string for an object not showing seconds."""
-        return '%2.2d:%2.2d %s' % (self._pmhour,self._minute,self._pm)
+        return self._D.strftime('%I:%M %p')
 
     def PreciseTime(self):
         """Return the time string for the object."""
-        return '%2.2d:%2.2d:%06.3f' % (self._hour,self._minute,self._second)
+        # MIGRATED
+        secs = self._D.second + self._D.microsecond/1000000.0
+        return self._D.strftime('%H:%M:') + '%06.3f' % secs
 
     def PreciseAMPM(self):
         """Return the time string for the object."""
-        return '%2.2d:%2.2d:%06.3f %s' % (
-                self._pmhour,self._minute,self._second,self._pm)
+        # MIGRATED
+        secs = self._D.second + self._D.microsecond/1000000.0
+        return self._D.strftime('%I:%M:') + '%06.3f ' % secs + self._D.strftime('%p')
 
     def yy(self):
         """Return calendar year as a 2 digit string."""
-        return str(self._year)[-2:]
+        # MIGRATED
+        return self._D.strftime('%y')
 
     def mm(self):
         """Return month as a 2 digit string."""
-        return '%02d' % self._month
+        # MIGRATED
+        return self._D.strftime('%m')
 
     def dd(self):
         """Return day as a 2 digit string."""
-        return '%02d' % self._day
+        # MIGRATED
+        return self._D.strftime('%d')
+
 
     def rfc822(self):
         """Return the date in RFC 822 format."""

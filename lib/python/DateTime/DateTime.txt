@@ -462,13 +462,13 @@ General formats from previous DateTime
 * ``AMPM()`` returns the time string for an object to the nearest second:
 
     >>> dt.AMPM()
-    '01:45:00 pm'
+    '01:45:00 PM'
 
 * ``AMPMMinutes()`` returns the time string for an object not showing
   seconds:
 
     >>> dt.AMPMMinutes()
-    '01:45 pm'
+    '01:45 PM'
 
 * ``PreciseTime()`` returns the time string for the object:
 
@@ -478,7 +478,7 @@ General formats from previous DateTime
 * ``PreciseAMPM()``return the time string for the object:
 
     >>> dt.PreciseAMPM()
-    '01:45:00.000 pm'
+    '01:45:00.000 PM'
 
 * ``yy()`` returns the calendar year as a 2 digit string
 
