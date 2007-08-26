@@ -1259,60 +1259,73 @@ class DateTime:
         """Return true if this object represents a date/time
         later than the time of the call.
         """
-        return (self._t > time())
+        # MIGRATED
+        # ATT: fix this - self._D is usually offset-aware, datetime.now()
+        # isn't and we Python can not compare them directly
+        return self._D.utctimetuple() > datetime.utcnow().utctimetuple()
 
     def isPast(self):
         """Return true if this object represents a date/time
         earlier than the time of the call.
         """
-        return (self._t < time())
+        # MIGRATED
+        # ATT: fix this - self._D is usually offset-aware, datetime.now()
+        # isn't and we Python can not compare them directly
+        return self._D.utctimetuple() < datetime.utcnow().utctimetuple()
 
     def isCurrentYear(self):
         """Return true if this object represents a date/time
         that falls within the current year, in the context
         of this object\'s timezone representation.
         """
-        t=time()
-        return safegmtime(t+_tzoffset(self._tz, t))[0]==self._year
+        # MIGRATED
+        # ATT: Timezone issues?
+        return self._D.year == datetime.now().year
+
 
     def isCurrentMonth(self):
         """Return true if this object represents a date/time
         that falls within the current month, in the context
         of this object\'s timezone representation.
         """
-        t=time()
-        gmt=safegmtime(t+_tzoffset(self._tz, t))
-        return gmt[0]==self._year and gmt[1]==self._month
+        # MIGRATED
+        # ATT: Timezone issues?
+        now = datetime.now()
+        return now.year == self._D.year and now.month == self._D.month
+
 
     def isCurrentDay(self):
         """Return true if this object represents a date/time
         that falls within the current day, in the context
         of this object\'s timezone representation.
         """
-        t=time()
-        gmt=safegmtime(t+_tzoffset(self._tz, t))
-        return gmt[0]==self._year and gmt[1]==self._month and gmt[2]==self._day
+        # MIGRATED
+        # ATT: Timezone issues?
+        now = datetime.utcnow()
+        return now.year == self._D.year and now.month == self._D.month \
+               and now.day == self._D.day
+
 
     def isCurrentHour(self):
         """Return true if this object represents a date/time
         that falls within the current hour, in the context
         of this object\'s timezone representation.
         """
-        t=time()
-        gmt=safegmtime(t+_tzoffset(self._tz, t))
-        return (gmt[0]==self._year and gmt[1]==self._month and
-                gmt[2]==self._day and gmt[3]==self._hour)
+        # MIGRATED
+        # ATT: Timezone issues?
+        now = datetime.utcnow()
+        return self._D.utctimetuple()[:5] == now.utctimetuple()[:5]
 
     def isCurrentMinute(self):
         """Return true if this object represents a date/time
         that falls within the current minute, in the context
         of this object\'s timezone representation.
         """
-        t=time()
-        gmt=safegmtime(t+_tzoffset(self._tz, t))
-        return (gmt[0]==self._year and gmt[1]==self._month and
-                gmt[2]==self._day and gmt[3]==self._hour and
-                gmt[4]==self._minute)
+        # MIGRATED
+        # ATT: Timezone issues?
+        now = datetime.utcnow()
+        return self._D.utctimetuple()[:6] == now.utctimetuple()[:6]
+
 
     def earliestTime(self):
         """Return a new DateTime object that represents the earliest
