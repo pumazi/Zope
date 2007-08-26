@@ -14,7 +14,7 @@
 
 __version__='$Revision: 1.99 $'[11:-2]
 
-
+import copy
 import re, math,  DateTimeZone
 from time import time, gmtime, localtime, mktime
 from time import daylight, timezone, altzone, strftime
@@ -1865,27 +1865,41 @@ class DateTime:
         return cmp(self._t,obj)
 
     def __hash__(self):
-        """Compute a hash value for a DateTime."""
-        return int(((self._year%100*12+self._month)*31+
-                     self._day+self.time)*100)
+        """Compute a hash value for a DateTime. The computed hash
+           is independent of the timezone.
+        """
+        # MIGRATED
+        nd = copy.copy(self._D)
+        nd.replace(tzinfo=None)
+        return int(mktime(nd.utctimetuple()))
+        
 
     def __int__(self):
         """Convert to an integer number of seconds since the epoch (gmt)."""
+        # HALFWAY MIGRATED (issues with timezone)??
+#        ts = mktime(self._D.timetuple())
+#       return int(ts / 1000)       
         return int(self.millis() / 1000)
 
     def __long__(self):
         """Convert to a long-int number of seconds since the epoch (gmt)."""
+        # HALFWAY MIGRATED (issues with timezone)??
+#        ts = mktime(self._D.timetuple())
+#       return long(ts / 1000)       
         return long(self.millis() / 1000)
 
     def __float__(self):
         """Convert to floating-point number of seconds since the epoch (gmt)."""
+        # HALFWAY MIGRATED (issues with timezone)??
+#       ts = mktime(self._D.timetuple())
+#       return float(ts)
         return float(self._t)
 
     def _parse_iso8601(self,s):
         try:
             return self.__parse_iso8601(s)
         except IndexError:
-            raise SyntaxError, (
+            raise SyntaxError(
                 'Not an ISO 8601 compliant date string: "%s"' % s)
 
 

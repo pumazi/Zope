@@ -610,9 +610,9 @@ The hash value of a DateTime is based on the date and time and is
 equal for different representations of the DateTime:
 
   >>> hash(dt)
-  3618678
+  857929500
   >>> hash(dt.toZone('UTC'))
-  3618678
+  857929500
 
 A DateTime can be compared with another DateTime or float via
 ``cmp()``.  NOTE: __cmp__ support is provided for backward
