@@ -1332,15 +1332,19 @@ class DateTime:
         possible time (in whole seconds) that still falls within
         the current object\'s day, in the object\'s timezone context.
         """
-        return self.__class__(self._year,self._month,self._day,0,0,0,self._tz)
+        # MIGRATED
+        return self.__class__(self._D.year, self._D.month, self._D.day,
+                              0, 0, 0, self._tz)
 
     def latestTime(self):
         """Return a new DateTime object that represents the latest
         possible time (in whole seconds) that still falls within
         the current object\'s day, in the object\'s timezone context.
         """
-        return self.__class__(self._year,self._month,self._day,
-                              23,59,59,self._tz)
+        # MIGRATED
+        return self.__class__(self._D.year, self._D.month, self._D.day,
+                              23, 59, 59, self._tz)
+
 
     def greaterThan(self,t):
         """Compare this DateTime object to another DateTime object
@@ -1349,17 +1353,12 @@ class DateTime:
 
         Returns true if the object represents a date/time greater
         than the specified DateTime or time module style time.
-
-        Revised to give more correct results through comparison of
-        long integer milliseconds.
         """
-        # Optimized for sorting speed
+        # MIGRATED
         try:
-            return (self._millis > t._millis)
+            return self._D.utctimetuple() > t._D.utctimetuple()
         except AttributeError:
-            try: self._millis
-            except AttributeError: self._upgrade_old()
-        return (self._t > t)
+            return self._D.utctimetuple() > datetime.fromtimestamp(t).utctimetuple()
 
     __gt__ = greaterThan
 
@@ -1371,17 +1370,12 @@ class DateTime:
         Returns true if the object represents a date/time greater
         than or equal to the specified DateTime or time module style
         time.
-
-        Revised to give more correct results through comparison of
-        long integer milliseconds.
         """
-        # Optimized for sorting speed
+        # MIGRATED
         try:
-            return (self._millis >= t._millis)
+            return self._D.utctimetuple() >= t._D.utctimetuple()
         except AttributeError:
-            try: self._millis
-            except AttributeError: self._upgrade_old()
-        return (self._t >= t)
+            return self._D.utctimetuple() >= datetime.fromtimestamp(t).utctimetuple()
 
     __ge__ = greaterThanEqualTo
 
@@ -1434,17 +1428,12 @@ class DateTime:
 
         Returns true if the object represents a date/time less than
         the specified DateTime or time module style time.
-
-        Revised to give more correct results through comparison of
-        long integer milliseconds.
         """
-        # Optimized for sorting speed
+        # MIGRATED
         try:
-            return (self._millis < t._millis)
+            return self._D.utctimetuple() < t._D.utctimetuple()
         except AttributeError:
-            try: self._millis
-            except AttributeError: self._upgrade_old()
-        return (self._t < t)
+            return self._D.utctimetuple() < datetime.fromtimestamp(t).utctimetuple()
 
     __lt__ = lessThan
 
@@ -1455,17 +1444,13 @@ class DateTime:
 
         Returns true if the object represents a date/time less than
         or equal to the specified DateTime or time module style time.
-
-        Revised to give more correct results through comparison of
-        long integer milliseconds.
         """
-        # Optimized for sorting speed
+        # MIGRATED
         try:
-            return (self._millis <= t._millis)
+            return self._D.utctimetuple() <= t._D.utctimetuple()
         except AttributeError:
-            try: self._millis
-            except AttributeError: self._upgrade_old()
-        return (self._t <= t)
+            return self._D.utctimetuple() <= datetime.fromtimestamp(t).utctimetuple()
+
 
     __le__ = lessThanEqualTo
 
