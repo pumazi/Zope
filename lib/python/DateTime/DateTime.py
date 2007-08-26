@@ -1687,6 +1687,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: March 1, 1997 1:45 pm.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %s:%2.2d %s' % (
                self._fmon,self._day,self._year,self._pmhour,
                self._minute,self._pm)
@@ -1695,6 +1696,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: March 1, 1997 1:45 pm US/Eastern.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %d:%2.2d %s %s' % (
                self._fmon,self._day,self._year,self._pmhour,
                self._minute,self._pm,self._tz)
@@ -1703,6 +1705,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: Mar 1, 1997 1:45 pm.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %s:%2.2d %s' % (
                self._amon,self._day,self._year,self._pmhour,
                self._minute,self._pm)
@@ -1711,6 +1714,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: Mar 1, 1997 1:45 pm US/Eastern.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %d:%2.2d %s %s' % (
                self._amon,self._day,self._year,self._pmhour,
                self._minute,self._pm,self._tz)
@@ -1719,6 +1723,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: Mar. 1, 1997 1:45 pm.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %s:%2.2d %s' % (
                self._pmon,self._day,self._year,self._pmhour,
                self._minute,self._pm)
@@ -1727,6 +1732,7 @@ class DateTime:
         """Return a string representing the object\'s value
         in the format: Mar. 1, 1997 1:45 pm US/Eastern.
         """
+        # STUPID APIs - Remove them???
         return '%s %s, %4.4d %d:%2.2d %s %s' % (
                self._pmon,self._day,self._year,self._pmhour,
                self._minute,self._pm,self._tz)
