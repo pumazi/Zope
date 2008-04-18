@@ -38,6 +38,10 @@ class ViewPageTemplateFile(viewpagetemplatefile.ViewPageTemplateFile):
 
     id = property(getId)
 
+    # TODO: This is basically a copy'n'paste job from the base class,
+    # just to rename the 'instance' keyword argument and thus to allow
+    # this argument to occur in **keywords.  Ideally, we should put this
+    # fix in zope.app.pagetemplate and get rid of the duplication here.
     def __call__(self, __instance, *args, **keywords):
         instance = __instance
         namespace = self.pt_getContext(
