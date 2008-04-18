@@ -49,12 +49,13 @@ class LegacyTemplate(BrowserView):
     def __call__(self):
         return self.template()
 
-class LegacyTemplateTwo(BrowserView):
+class InstanceTemplate(BrowserView):
 
     def __init__(self, context, request):
         self.__parent__ = context
         self.context = context
         self.request = request
+        # This is wrong (even though it used to work before):
         self.template = ViewPageTemplateFile('falcon.pt')
 
     def __call__(self):

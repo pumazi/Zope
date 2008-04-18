@@ -166,36 +166,34 @@ Now let's try URL traversal:
 Testing keyword arguments
 =========================
 
-ViewPageTemplateFile's take arbitrary keyword arguments:
+Instances of ViewPageTemplateFile can be accessed from outside the
+view and called.  They take arbitrary keyword arguments:
 
   >>> view = getMultiAdapter((self.folder, request), name='template')
   >>> template = view.template
   >>> print template(foo=1, bar=2)
   <p>The falcon has taken flight</p>
 
-Passing in an argument called instance was supported by the old Five version
-of ViewPageTemplateFile, so we still need to support it.
-
-In the zope.app.pagetemplate version, the first required argument is called
-instance, though.
+Passing in an argument called ``instance`` was supported by the old
+Five version of ViewPageTemplateFile, so we still need to support it:
 
   >>> print template(instance='allowed')
   <p>The falcon has taken flight</p>
 
 
-No arguments required
-=====================
+Class-level templates only
+==========================
 
-ViewPageTemplateFile's require no arguments, but you can only use them as
-class variables:
+ViewPageTemplateFile instances can only be used as class attributes.
+If you put one on an instance (as does the following view), you'll get
+a ``TypeError`` when you try to render the template:
 
-  >>> view = getMultiAdapter((self.folder, request), name='template_two')
+  >>> view = getMultiAdapter((self.folder, request), name='instance_template')
   >>> print view()
   Traceback (most recent call last):
   ...
   TypeError: __call__() takes at least 2 arguments (1 given)
   
-
 
 Clean up
 --------

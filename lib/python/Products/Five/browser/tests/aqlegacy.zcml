@@ -24,8 +24,8 @@
 
   <browser:page
       for="*"
-      name="template_two"
-      class=".aqlegacy.LegacyTemplateTwo"
+      name="instance_template"
+      class=".aqlegacy.InstanceTemplate"
       permission="zope.Public"
       />
 
