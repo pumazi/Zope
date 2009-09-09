@@ -59,48 +59,32 @@ def startup():
 
     configuration = getConfiguration()
 
-    # Open the database
+    # Open the databases
     dbtab = configuration.dbtab
-    try:
-        # Try to use custom storage
-        try:
-            m=imp.find_module('custom_zodb',[configuration.testinghome])
-        except:
-            m=imp.find_module('custom_zodb',[configuration.instancehome])
-    except:
-        # if there is no custom_zodb, use the config file specified databases
-        DB = dbtab.getDatabase('/', is_root=1)
-    else:
-        m=imp.load_module('Zope2.custom_zodb', m[0], m[1], m[2])
-        sys.modules['Zope2.custom_zodb']=m
+    root = dbtab.getDatabase('/', is_root=1)
+    notify(DatabaseOpened(root))
 
-        # Get the database and join it to the dbtab multidatabase
-        # FIXME: this uses internal datastructures of dbtab
-        databases = getattr(dbtab, 'databases', {})
-        if hasattr(m,'DB'):
-            DB=m.DB
-            databases.update(getattr(DB, 'databases', {}))
-            DB.databases = databases
-        else:
-            DB = ZODB.DB(m.Storage, databases=databases)
+    for opener in configuration.databases:
+        if opener.name == root.database_name:
+            continue
+        db = opener.open(opener.name, root.databases)
+        notify(DatabaseOpened(db))
 
-    notify(DatabaseOpened(DB))
+    Globals.BobobaseName = root.getName()
 
-    Globals.BobobaseName = DB.getName()
-
-    if DB.getActivityMonitor() is None:
+    if root.getActivityMonitor() is None:
         from ZODB.ActivityMonitor import ActivityMonitor
-        DB.setActivityMonitor(ActivityMonitor())
+        root.setActivityMonitor(ActivityMonitor())
 
-    Globals.DB = DB # Ick, this is temporary until we come up with some registry
-    Zope2.DB = DB
+    Globals.DB = root # Ick, this is temporary until we come up with some registry
+    Zope2.DB = root
 
     # Hook for providing multiple transaction object manager undo support:
-    Globals.UndoManager = DB
+    Globals.UndoManager = root
 
-    Globals.opened.append(DB)
+    Globals.opened.append(root)
     import ClassFactory
-    DB.classFactory = ClassFactory.ClassFactory
+    root.classFactory = ClassFactory.ClassFactory
 
     # "Log on" as system user
     newSecurityManager(None, AccessControl.User.system)
@@ -108,7 +92,7 @@ def startup():
     # Set up the "app" object that automagically opens
     # connections
     app = App.ZApplication.ZApplicationWrapper(
-        DB, 'Application', OFS.Application.Application, ()
+        root, 'Application', OFS.Application.Application, ()
     )
     Zope2.bobo_application = app
 
