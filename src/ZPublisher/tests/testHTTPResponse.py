@@ -58,14 +58,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.headers,
                          {'status': '401 Unauthorized'}) # XXX WTF?
 
-    def test_retry(self):
-        STDOUT, STDERR = object(), object()
-        response = self._makeOne(stdout=STDOUT, stderr=STDERR)
-        cloned = response.retry()
-        self.failUnless(isinstance(cloned, self._getTargetClass()))
-        self.failUnless(cloned.stdout is STDOUT)
-        self.failUnless(cloned.stderr is STDERR)
-
     def test_ctor_charset_no_content_type_header(self):
         response = self._makeOne(body='foo')
         self.assertEqual(response.headers.get('content-type'),
@@ -122,49 +114,86 @@ class HTTPResponseTests(unittest.TestCase):
                                             'text/xml; charset=iso-8859-15'})
         self.assertEqual(response.body, xml)
 
+    def test_retry(self):
+        STDOUT, STDERR = object(), object()
+        response = self._makeOne(stdout=STDOUT, stderr=STDERR)
+        cloned = response.retry()
+        self.failUnless(isinstance(cloned, self._getTargetClass()))
+        self.failUnless(cloned.stdout is STDOUT)
+        self.failUnless(cloned.stderr is STDERR)
+
+    def test_setStatus_code(self):
+        response = self._makeOne()
+        response.setStatus(400)
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.errmsg, 'Bad Request')
+
+    def test_setStatus_errmsg(self):
+        response = self._makeOne()
+        response.setStatus('Bad Request')
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.errmsg, 'Bad Request')
+
     def test_setStatus_BadRequest(self):
         from zExceptions import BadRequest
         response = self._makeOne()
         response.setStatus(BadRequest)
         self.assertEqual(response.status, 400)
+        self.assertEqual(response.errmsg, 'Bad Request')
 
-    def test_setStatus_Unauthorized(self):
+    def test_setStatus_Unauthorized_exception(self):
         from zExceptions import Unauthorized
         response = self._makeOne()
         response.setStatus(Unauthorized)
         self.assertEqual(response.status, 401)
+        self.assertEqual(response.errmsg, 'Unauthorized')
 
-    def test_setStatus_Forbidden(self):
+    def test_setStatus_Forbidden_exception(self):
         from zExceptions import Forbidden
         response = self._makeOne()
         response.setStatus(Forbidden)
         self.assertEqual(response.status, 403)
+        self.assertEqual(response.errmsg, 'Forbidden')
 
-    def test_setStatus_NotFound(self):
+    def test_setStatus_NotFound_exception(self):
         from zExceptions import NotFound
         response = self._makeOne()
         response.setStatus(NotFound)
         self.assertEqual(response.status, 404)
+        self.assertEqual(response.errmsg, 'Not Found')
 
-    def test_setStatus_ResourceLockedError(self):
+    def test_setStatus_ResourceLockedError_exception(self):
         response = self._makeOne()
         from webdav.Lockable import ResourceLockedError
         response.setStatus(ResourceLockedError)
         self.assertEqual(response.status, 423)
+        self.assertEqual(response.errmsg, 'Locked')
 
-    def test_setStatus_InternalError(self):
+    def test_setStatus_InternalError_exception(self):
         from zExceptions import InternalError
         response = self._makeOne()
         response.setStatus(InternalError)
         self.assertEqual(response.status, 500)
+        self.assertEqual(response.errmsg, 'Internal Server Error')
 
-    def test_setCookie_no_attrs(self):
+    def test_setCookie_no_existing(self):
         response = self._makeOne()
         response.setCookie('foo', 'bar')
         cookie = response.cookies.get('foo', None)
         self.assertEqual(len(cookie), 1)
         self.assertEqual(cookie.get('value'), 'bar')
 
+    def test_setCookie_w_existing(self):
+        response = self._makeOne()
+        response.setCookie('foo', 'bar')
+        response.setCookie('foo', 'baz')
+        cookie = response.cookies.get('foo', None)
+        self.assertEqual(len(cookie), 1)
+        self.assertEqual(cookie.get('value'), 'baz')
+
+    def test_setCookie_no_attrs(self):
+        response = self._makeOne()
+        response.setCookie('foo', 'bar')
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
         self.assertEqual(cookies[0], 'Set-Cookie: foo="bar"')
@@ -268,6 +297,22 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(len(cookie_list), 1)
         self.assertEqual(cookie_list[0], 'Set-Cookie: foo="bar"')
 
+    def test_appendCookie_w_existing(self):
+        response = self._makeOne()
+        response.setCookie('foo', 'bar', path='/')
+        response.appendCookie('foo', 'baz')
+        cookie = response.cookies.get('foo', None)
+        self.failUnless(cookie)
+        self.assertEqual(cookie.get('value'), 'bar:baz')
+        self.assertEqual(cookie.get('path'), '/')
+
+    def test_appendCookie_no_existing(self):
+        response = self._makeOne()
+        response.appendCookie('foo', 'baz')
+        cookie = response.cookies.get('foo', None)
+        self.failUnless(cookie)
+        self.assertEqual(cookie.get('value'), 'baz')
+
     def test_expireCookie(self):
         response = self._makeOne()
         response.expireCookie('foo', path='/')
@@ -289,23 +334,21 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(cookie.get('max_age'), 0)
         self.assertEqual(cookie.get('path'), '/')
 
-    def test_appendCookie(self):
+    def test_getHeader_nonesuch(self):
         response = self._makeOne()
-        response.setCookie('foo', 'bar', path='/')
-        response.appendCookie('foo', 'baz')
-        cookie = response.cookies.get('foo', None)
-        self.failUnless(cookie)
-        self.assertEqual(cookie.get('value'), 'bar:baz')
-        self.assertEqual(cookie.get('path'), '/')
+        self.assertEqual(response.getHeader('nonesuch'), None)
 
-    def test_appendHeader(self):
-        response = self._makeOne()
-        response.setHeader('foo', 'bar')
-        response.appendHeader('foo', 'foo')
-        self.assertEqual(response.headers.get('foo'), 'bar,\r\n\tfoo')
-        response.setHeader('xxx', 'bar')
-        response.appendHeader('XXX', 'foo')
-        self.assertEqual(response.headers.get('xxx'), 'bar,\r\n\tfoo')
+    def test_getHeader_existing(self):
+        response = self._makeOne(headers={'foo': 'bar'})
+        self.assertEqual(response.getHeader('foo'), 'bar')
+
+    def test_getHeader_existing_not_literal(self):
+        response = self._makeOne(headers={'foo': 'bar'})
+        self.assertEqual(response.getHeader('Foo'), 'bar')
+
+    def test_getHeader_existing_w_literal(self):
+        response = self._makeOne(headers={'Foo': 'Bar'})
+        self.assertEqual(response.getHeader('Foo', literal=True), 'Bar')
 
     def test_setHeader(self):
         response = self._makeOne()
@@ -324,13 +367,57 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.getHeader('SPAM', literal=True), 'eggs')
         self.assertEqual(response.getHeader('spam'), None)
 
-    def test_addHeader_drops_CRLF(self):
+    def test_setHeader_drops_CRLF(self):
         # RFC2616 disallows CRLF in a header value.
         response = self._makeOne()
-        response.addHeader('Location',
+        response.setHeader('Location',
                            'http://www.ietf.org/rfc/\r\nrfc2616.txt')
+        self.assertEqual(response.headers['location'],
+                         'http://www.ietf.org/rfc/rfc2616.txt')
+
+    def test_setHeader_Set_Cookie_special_case(self):
+        # This is crazy, given that we have APIs for cookies.  Special
+        # behavior will go away in Zope 2.13
+        response = self._makeOne()
+        response.setHeader('Set-Cookie', 'foo="bar"')
+        self.assertEqual(response.getHeader('Set-Cookie'), None)
         self.assertEqual(response.accumulated_headers,
-                         [('Location', 'http://www.ietf.org/rfc/rfc2616.txt')])
+                         [('Set-Cookie', 'foo="bar"')])
+
+    def test_setHeader_drops_CRLF_when_accumulating(self):
+        # RFC2616 disallows CRLF in a header value.
+        # This is crazy, given that we have APIs for cookies.  Special
+        # behavior will go away in Zope 2.13
+        response = self._makeOne()
+        response.setHeader('Set-Cookie', 'allowed="OK"')
+        response.setHeader('Set-Cookie',
+                       'violation="http://www.ietf.org/rfc/\r\nrfc2616.txt"')
+        self.assertEqual(response.accumulated_headers,
+                        [('Set-Cookie', 'allowed="OK"'),
+                         ('Set-Cookie',
+                          'violation="http://www.ietf.org/rfc/rfc2616.txt"')])
+
+    def test_appendHeader_no_existing(self):
+        response = self._makeOne()
+        response.appendHeader('foo', 'foo')
+        self.assertEqual(response.headers.get('foo'), 'foo')
+
+    def test_appendHeader_no_existing_case_insensative(self):
+        response = self._makeOne()
+        response.appendHeader('Foo', 'foo')
+        self.assertEqual(response.headers.get('foo'), 'foo')
+
+    def test_appendHeader_w_existing(self):
+        response = self._makeOne()
+        response.setHeader('foo', 'bar')
+        response.appendHeader('foo', 'foo')
+        self.assertEqual(response.headers.get('foo'), 'bar,\r\n\tfoo')
+
+    def test_appendHeader_w_existing_case_insenstative(self):
+        response = self._makeOne()
+        response.setHeader('xxx', 'bar')
+        response.appendHeader('XXX', 'foo')
+        self.assertEqual(response.headers.get('xxx'), 'bar,\r\n\tfoo')
 
     def test_appendHeader_drops_CRLF(self):
         # RFC2616 disallows CRLF in a header value.
@@ -340,24 +427,79 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.headers['location'],
                          'http://www.ietf.org/rfc/rfc2616.txt')
 
-    def test_setHeader_drops_CRLF(self):
-        # RFC2616 disallows CRLF in a header value.
+    def test_addHeader_is_case_sensitive(self):
         response = self._makeOne()
-        response.setHeader('Location',
-                           'http://www.ietf.org/rfc/\r\nrfc2616.txt')
-        self.assertEqual(response.headers['location'],
-                         'http://www.ietf.org/rfc/rfc2616.txt')
-
-    def test_setHeader_drops_CRLF_when_accumulating(self):
-        # RFC2616 disallows CRLF in a header value.
-        response = self._makeOne()
-        response.setHeader('Set-Cookie', 'allowed="OK"')
-        response.setHeader('Set-Cookie',
-                       'violation="http://www.ietf.org/rfc/\r\nrfc2616.txt"')
+        response.addHeader('Location', 'http://www.ietf.org/rfc/rfc2616.txt')
         self.assertEqual(response.accumulated_headers,
-                        [('Set-Cookie', 'allowed="OK"'),
-                         ('Set-Cookie',
-                          'violation="http://www.ietf.org/rfc/rfc2616.txt"')])
+                         [('Location', 'http://www.ietf.org/rfc/rfc2616.txt')])
+
+    def test_addHeader_drops_CRLF(self):
+        # RFC2616 disallows CRLF in a header value.
+        response = self._makeOne()
+        response.addHeader('Location',
+                           'http://www.ietf.org/rfc/\r\nrfc2616.txt')
+        self.assertEqual(response.accumulated_headers,
+                         [('Location', 'http://www.ietf.org/rfc/rfc2616.txt')])
+
+    def test_setBase_None(self):
+        response = self._makeOne()
+        response.base = 'BEFORE'
+        response.setBase(None)
+        self.assertEqual(response.base, '')
+
+    def test_setBase_no_trailing_path(self):
+        response = self._makeOne()
+        response.setBase('foo')
+        self.assertEqual(response.base, 'foo/')
+
+    def test_setBase_w_trailing_path(self):
+        response = self._makeOne()
+        response.setBase('foo/')
+        self.assertEqual(response.base, 'foo/')
+
+    def test_insertBase_not_HTML_no_change(self):
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'application/pdf')
+        response.setHeader('Content-Length', 8)
+        response.body = 'BLAHBLAH'
+        response.insertBase()
+        self.assertEqual(response.body, 'BLAHBLAH')
+        self.assertEqual(response.getHeader('Content-Length'), '8')
+
+    def test_insertBase_HTML_no_base_w_head_not_munged(self):
+        HTML = '<html><head></head><body></body></html>'
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html')
+        response.setHeader('Content-Length', len(HTML))
+        response.body = HTML
+        response.insertBase()
+        self.assertEqual(response.body, HTML)
+        self.assertEqual(response.getHeader('Content-Length'), str(len(HTML)))
+
+    def test_insertBase_HTML_w_base_no_head_not_munged(self):
+        HTML = '<html><body></body></html>'
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html')
+        response.setHeader('Content-Length', len(HTML))
+        response.body = HTML
+        response.insertBase()
+        self.assertEqual(response.body, HTML)
+        self.assertEqual(response.getHeader('Content-Length'), str(len(HTML)))
+
+    def test_insertBase_HTML_w_base_w_head_munged(self):
+        HTML = '<html><head></head><body></body></html>'
+        MUNGED = ('<html><head>\n'
+                  '<base href="http://example.com/base/" />\n'
+                  '</head><body></body></html>')
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html')
+        response.setHeader('Content-Length', 8)
+        response.body = HTML
+        response.setBase('http://example.com/base/')
+        response.insertBase()
+        self.assertEqual(response.body, MUNGED)
+        self.assertEqual(response.getHeader('Content-Length'),
+                         str(len(MUNGED)))
 
     def test_setBody_compression_vary(self):
         # Vary header should be added here

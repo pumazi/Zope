@@ -200,20 +200,6 @@ class HTTPResponse(BaseResponse):
         # think that that's all that is ever passed.
         return self.__class__(stdout=self.stdout, stderr=self.stderr)
 
-    _shutdown_flag = None
-    def _requestShutdown(self, exitCode=0):
-        """ Request that the server shut down with exitCode after fulfilling
-           the current request.
-        """
-        import ZServer
-        ZServer.exit_code = exitCode
-        self._shutdown_flag = 1
-
-    def _shutdownRequested(self):
-        """ Returns true if this request requested a server shutdown.
-        """
-        return self._shutdown_flag is not None
-
     def setStatus(self, status, reason=None, lock=None):
         """ Set the HTTP status code of the response
         
@@ -252,41 +238,183 @@ class HTTPResponse(BaseResponse):
         if lock:
              self._locked_status = 1
 
+    def setCookie(self, name, value, **kw):
+        """ Set an HTTP cookie.
+
+        The response will include an HTTP header that sets a cookie on
+        cookie-enabled browsers with a key "name" and value
+        "value".
+        
+        This value overwrites any previously set value for the
+        cookie in the Response object.
+        """
+        name = str(name)
+        value = str(value)
+
+        cookies = self.cookies
+        if cookies.has_key(name):
+            cookie = cookies[name]
+        else:
+            cookie = cookies[name] = {}
+        for k, v in kw.items():
+            cookie[k] = v
+        cookie['value'] = value
+
+    def appendCookie(self, name, value):
+        """ Set an HTTP cookie.
+        
+        Returns an HTTP header that sets a cookie on cookie-enabled
+        browsers with a key "name" and value "value". If a value for the
+        cookie has previously been set in the response object, the new
+        value is appended to the old one separated by a colon.
+        """
+        name = str(name)
+        value = str(value)
+
+        cookies = self.cookies
+        if cookies.has_key(name):
+            cookie = cookies[name]
+        else:
+            cookie = cookies[name] = {}
+        if cookie.has_key('value'):
+            cookie['value'] = '%s:%s' % (cookie['value'], value)
+        else:
+            cookie['value'] = value
+
+    def expireCookie(self, name, **kw):
+        """ Clear an HTTP cookie.
+
+        The response will include an HTTP header that will remove the cookie
+        corresponding to "name" on the client, if one exists. This is
+        accomplished by sending a new cookie with an expiration date
+        that has already passed. Note that some clients require a path
+        to be specified - this path must exactly match the path given
+        when creating the cookie. The path can be specified as a keyword
+        argument.
+        """
+        name = str(name)
+
+        d = kw.copy()
+        if 'value' in d:
+            d.pop('value')
+        d['max_age'] = 0
+        d['expires'] = 'Wed, 31-Dec-97 23:59:59 GMT'
+
+        self.setCookie(name, value='deleted', **d)
+
+    def getHeader(self, name, literal=0):
+        """ Get a previously set header value.
+
+        Return the value associated with a HTTP return header, or
+        None if no such header has been set in the response
+        yet.
+        
+        If the 'literal' flag is true, preserve the case of the header name;
+        otherwise lower-case the header name before looking up the value.
+        """
+        key = literal and name or name.lower()
+        return self.headers.get(key, None)
+
     def setHeader(self, name, value, literal=0, scrubbed=False):
-        '''\
-        Sets an HTTP return header "name" with value "value", clearing
-        the previous value set for the header, if one exists. If the
-        literal flag is true, the case of the header name is preserved,
-        otherwise the header name will be lowercased.'''
+        """ Set an HTTP return header on the response.
+        
+        Replay any existing value set for the header.
+        
+        If the 'literal' flag is true, preserve the case of the header name;
+        otherwise the header name will be lowercased.
+
+        'scrubbed' is for internal use, to indicate that another API has
+        already removed any CRLF from the name and value.
+        """
         if not scrubbed:
             name, value = _scrubHeader(name, value)
         key = name.lower()
-        if key == 'set-cookie':
+        # The following is crazy, given that we have APIs for cookies.
+        # Special behavior will go away in Zope 2.13
+        if key == 'set-cookie':  
             self.accumulated_headers.append((name, value))
         else:
             name = literal and name or key
             self.headers[name] = value
 
-    def getHeader(self, name, literal=0):
-        '''\
-        Get a header value
+    def appendHeader(self, name, value, delimiter=","):
+        """ Append a value to an HTTP return header.
 
-        Returns the value associated with a HTTP return header, or
-        "None" if no such header has been set in the response
-        yet. If the literal flag is true, the case of the header name is
-        preserved, otherwise the header name will be lowercased.'''
-        key = name.lower()
-        name = literal and name or key
-        return self.headers.get(name, None)
+        Set an HTTP return header "name" with value "value",
+        appending it following a comma if there was a previous value
+        set for the header.
+
+        'name' is always lowercased before use.
+        """
+        name, value = _scrubHeader(name, value)
+        name = name.lower()
+
+        headers = self.headers
+        if headers.has_key(name):
+            h = headers[name]
+            h = "%s%s\r\n\t%s" % (h, delimiter, value)
+        else:
+            h = value
+        self.setHeader(name,h, scrubbed=True)
 
     def addHeader(self, name, value):
-        '''\
-        Set a new HTTP return header with the given value, while retaining
-        any previously set headers with the same name.'''
+        """ Set a new HTTP return header with the given value,
+        
+        Retain any previously set headers with the same name.
+
+        Note that this API appneds to the 'accumulated_headers' attribute;
+        it does not update the 'headers' mapping.
+        """
         name, value = _scrubHeader(name, value)
         self.accumulated_headers.append((name, value))
 
     __setitem__ = setHeader
+
+    def setBase(self, base):
+        """Set the base URL for the returned document.
+
+        If base is None, set to the empty string.
+
+        If base is not None, ensure that it has a trailing slach.
+        """
+        if base is None:
+            base = ''
+        elif not base.endswith('/'):
+            base = base + '/'
+
+        self.base = str(base)
+
+    def insertBase(self,
+                   base_re_search=re.compile('(<base.*?>)',re.I).search
+                   ):
+
+        # Only insert a base tag if content appears to be html.
+        content_type = self.headers.get('content-type', '').split(';')[0]
+        if content_type and (content_type != 'text/html'):
+            return
+
+        if self.base:
+            body = self.body
+            if body:
+                match = start_of_header_search(body)
+                if match is not None:
+                    index = match.start(0) + len(match.group(0))
+                    ibase = base_re_search(body)
+                    if ibase is None:
+                        self.body = ('%s\n<base href="%s" />\n%s' %
+                                   (body[:index], escape(self.base, 1),
+                                    body[index:]))
+                        self.setHeader('content-length', len(self.body))
+
+    def isHTML(self, s):
+        s = s.lstrip()
+        # Note that the string can be big, so s.lower().startswith() is more
+        # expensive than s[:n].lower().
+        if (s[:6].lower() == '<html>' or s[:14].lower() == '<!doctype html'):
+            return 1
+        if s.find('</') > 0:
+            return 1
+        return 0
 
     def setBody(self, body, title='', is_error=0,
                 bogus_str_search=re.compile(" [a-fA-F0-9]+>$").search,
@@ -460,6 +588,23 @@ class HTTPResponse(BaseResponse):
 
         return self.use_HTTP_content_compression
 
+    # The following two methods are part of a private protocol with the
+    # publisher for handling fatal import errors and TTW shutdown requests.
+    _shutdown_flag = None
+    def _requestShutdown(self, exitCode=0):
+        """ Request that the server shut down with exitCode after fulfilling
+           the current request.
+        """
+        import ZServer
+        ZServer.exit_code = exitCode
+        self._shutdown_flag = 1
+
+    def _shutdownRequested(self):
+        """ Returns true if this request requested a server shutdown.
+        """
+        return self._shutdown_flag is not None
+
+
     def _encode_unicode(self,body,
                         charset_re=re.compile(r'(?:application|text)/[-+0-9a-z]+\s*;\s*' +
                                               r'charset=([-_0-9a-z]+' +
@@ -495,127 +640,6 @@ class HTTPResponse(BaseResponse):
         body = body.encode(default_encoding, 'replace')
         body = fix_xml_preamble(body, default_encoding)
         return body
-
-    def setBase(self, base):
-        """Set the base URL for the returned document.
-
-        If base is None, or the document already has a base, do nothing.
-        """
-        if base is None:
-            base = ''
-        elif not base.endswith('/'):
-            base = base + '/'
-        self.base = str(base)
-
-    def insertBase(self,
-                   base_re_search=re.compile('(<base.*?>)',re.I).search
-                   ):
-
-        # Only insert a base tag if content appears to be html.
-        content_type = self.headers.get('content-type', '').split(';')[0]
-        if content_type and (content_type != 'text/html'):
-            return
-
-        if self.base:
-            body = self.body
-            if body:
-                match = start_of_header_search(body)
-                if match is not None:
-                    index = match.start(0) + len(match.group(0))
-                    ibase = base_re_search(body)
-                    if ibase is None:
-                        self.body = ('%s\n<base href="%s" />\n%s' %
-                                   (body[:index], escape(self.base, 1),
-                                    body[index:]))
-                        self.setHeader('content-length', len(self.body))
-
-    def appendCookie(self, name, value):
-        '''\
-        Returns an HTTP header that sets a cookie on cookie-enabled
-        browsers with a key "name" and value "value". If a value for the
-        cookie has previously been set in the response object, the new
-        value is appended to the old one separated by a colon. '''
-
-        name = str(name)
-        value = str(value)
-
-        cookies = self.cookies
-        if cookies.has_key(name):
-            cookie = cookies[name]
-        else:
-            cookie = cookies[name] = {}
-        if cookie.has_key('value'):
-            cookie['value'] = '%s:%s' % (cookie['value'], value)
-        else:
-            cookie['value'] = value
-
-    def expireCookie(self, name, **kw):
-        '''\
-        Cause an HTTP cookie to be removed from the browser
-
-        The response will include an HTTP header that will remove the cookie
-        corresponding to "name" on the client, if one exists. This is
-        accomplished by sending a new cookie with an expiration date
-        that has already passed. Note that some clients require a path
-        to be specified - this path must exactly match the path given
-        when creating the cookie. The path can be specified as a keyword
-        argument.
-        '''
-        name = str(name)
-
-        d = kw.copy()
-        d['max_age'] = 0
-        d['expires'] = 'Wed, 31-Dec-97 23:59:59 GMT'
-        apply(HTTPResponse.setCookie, (self, name, 'deleted'), d)
-
-    def setCookie(self,name,value,**kw):
-        '''\
-        Set an HTTP cookie on the browser
-
-        The response will include an HTTP header that sets a cookie on
-        cookie-enabled browsers with a key "name" and value
-        "value". This overwrites any previously set value for the
-        cookie in the Response object.
-        '''
-        name = str(name)
-        value = str(value)
-
-        cookies = self.cookies
-        if cookies.has_key(name):
-            cookie = cookies[name]
-        else:
-            cookie = cookies[name] = {}
-        for k, v in kw.items():
-            cookie[k] = v
-        cookie['value'] = value
-
-    def appendHeader(self, name, value, delimiter=","):
-        '''\
-        Append a value to a header.
-
-        Sets an HTTP return header "name" with value "value",
-        appending it following a comma if there was a previous value
-        set for the header. '''
-        name, value = _scrubHeader(name, value)
-        name = name.lower()
-
-        headers = self.headers
-        if headers.has_key(name):
-            h = headers[name]
-            h = "%s%s\r\n\t%s" % (h,delimiter,value)
-        else:
-            h = value
-        self.setHeader(name,h, scrubbed=True)
-
-    def isHTML(self, s):
-        s = s.lstrip()
-        # Note that the string can be big, so s.lower().startswith() is more
-        # expensive than s[:n].lower().
-        if (s[:6].lower() == '<html>' or s[:14].lower() == '<!doctype html'):
-            return 1
-        if s.find('</') > 0:
-            return 1
-        return 0
 
     # deprecated
     def quoteHTML(self, text):
