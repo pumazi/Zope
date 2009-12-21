@@ -152,6 +152,7 @@ class HTTPResponse(BaseResponse):
     """ #'
 
     body = ''
+    base = ''
     realm = 'Zope'
     _error_format = 'text/html'
     _locked_status = 0
@@ -163,9 +164,14 @@ class HTTPResponse(BaseResponse):
     # 2 - ignore accept-encoding (i.e. force)
     use_HTTP_content_compression = 0
 
-    def __init__(self, body='', status=200, headers=None,
-                 stdout=sys.stdout, stderr=sys.stderr,):
-        """ Creates a new response using the given values.
+    def __init__(self,
+                 body='',
+                 status=200,
+                 headers=None,
+                 stdout=sys.stdout,
+                 stderr=sys.stderr,
+                ):
+        """ Create a new response using the given values.
         """
         if headers is None:
             headers = {}
@@ -178,9 +184,10 @@ class HTTPResponse(BaseResponse):
             headers['status'] = "200 OK"
         else:
             self.setStatus(status)
-        self.base = ''
+
         if body:
             self.setBody(body)
+
         self.cookies = {}
         self.stdout = stdout
         self.stderr = stderr
@@ -481,20 +488,23 @@ class HTTPResponse(BaseResponse):
                 return body
             else:
                 if ct.startswith('text/') or ct.startswith('application/'):
-                    self.headers['content-type'] = '%s; charset=%s' % (ct, default_encoding)
+                    self.headers['content-type'] = '%s; charset=%s' % (ct,
+                                                            default_encoding)
 
         # Use the default character encoding
         body = body.encode(default_encoding, 'replace')
         body = fix_xml_preamble(body, default_encoding)
         return body
 
-    def setBase(self,base):
+    def setBase(self, base):
         """Set the base URL for the returned document.
-        If base is None, or the document already has a base, do nothing."""
+
+        If base is None, or the document already has a base, do nothing.
+        """
         if base is None:
             base = ''
         elif not base.endswith('/'):
-            base = base+'/'
+            base = base + '/'
         self.base = str(base)
 
     def insertBase(self,
