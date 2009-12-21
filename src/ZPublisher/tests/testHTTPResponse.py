@@ -501,6 +501,108 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.getHeader('Content-Length'),
                          str(len(MUNGED)))
 
+    def test_setBody_w_locking(self):
+        response = self._makeOne()
+        response.setBody('BEFORE', lock=True)
+        result = response.setBody('AFTER')
+        self.failIf(result)
+        self.assertEqual(response.body, 'BEFORE')
+
+    def test_setBody_empty_unchanged(self):
+        response = self._makeOne()
+        response.body = 'BEFORE'
+        result = response.setBody('')
+        self.failUnless(result)
+        self.assertEqual(response.body, 'BEFORE')
+        self.assertEqual(response.getHeader('Content-Type'), None)
+        self.assertEqual(response.getHeader('Content-Length'), None)
+
+    def test_setBody_2_tuple_wo_is_error_converted_to_HTML(self):
+        EXPECTED = ("<html>\n"
+                    "<head>\n<title>TITLE</title>\n</head>\n"
+                    "<body>\nBODY\n</body>\n"
+                    "</html>\n")
+        response = self._makeOne()
+        response.body = 'BEFORE'
+        result = response.setBody(('TITLE', 'BODY'))
+        self.failUnless(result)
+        self.assertEqual(response.body, EXPECTED)
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/html; charset=iso-8859-15')
+        self.assertEqual(response.getHeader('Content-Length'),
+                         str(len(EXPECTED)))
+
+    def test_setBody_2_tuple_w_is_error_converted_to_Site_Error(self):
+        response = self._makeOne()
+        response.body = 'BEFORE'
+        result = response.setBody(('TITLE', 'BODY'), is_error=True)
+        self.failUnless(result)
+        self.failIf('BEFORE' in response.body)
+        self.failUnless('<h2>Site Error</h2>' in response.body)
+        self.failUnless('TITLE' in response.body)
+        self.failUnless('BODY' in response.body)
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/html; charset=iso-8859-15')
+
+    def test_setBody_string_not_HTML(self):
+        response = self._makeOne()
+        result = response.setBody('BODY')
+        self.failUnless(result)
+        self.assertEqual(response.body, 'BODY')
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/plain; charset=iso-8859-15')
+        self.assertEqual(response.getHeader('Content-Length'), '4')
+
+    def test_setBody_string_HTML(self):
+        HTML = '<html><head></head><body></body></html>'
+        response = self._makeOne()
+        result = response.setBody(HTML)
+        self.failUnless(result)
+        self.assertEqual(response.body, HTML)
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/html; charset=iso-8859-15')
+        self.assertEqual(response.getHeader('Content-Length'), str(len(HTML)))
+
+    def test_setBody_object_with_asHTML(self):
+        HTML = '<html><head></head><body></body></html>'
+        class Dummy:
+            def asHTML(self):
+                return HTML
+        response = self._makeOne()
+        result = response.setBody(Dummy())
+        self.failUnless(result)
+        self.assertEqual(response.body, HTML)
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/html; charset=iso-8859-15')
+        self.assertEqual(response.getHeader('Content-Length'), str(len(HTML)))
+
+    def test_setBody_object_with_unicode(self):
+        HTML = u'<html><head></head><body><h1>Tr\u0039</body></html>'
+        ENCODED = HTML.encode('iso-8859-15')
+        response = self._makeOne()
+        result = response.setBody(HTML)
+        self.failUnless(result)
+        self.assertEqual(response.body, ENCODED)
+        self.assertEqual(response.getHeader('Content-Type'),
+                         'text/html; charset=iso-8859-15')
+        self.assertEqual(response.getHeader('Content-Length'),
+                         str(len(ENCODED)))
+
+    def test_setBody_w_bogus_pseudo_HTML(self):
+        # The 2001 checkin message which added the path-under-test says:
+        # (r19315): "merged content type on error fixes from 2.3
+        # If the str of the object returs a Python "pointer" looking mess,
+        # don't let it get treated as HTML.
+        from ZPublisher import NotFound
+        BOGUS = '<Bogus a39d53d>'
+        response = self._makeOne()
+        self.assertRaises(NotFound, response.setBody, BOGUS)
+
+    #TODO
+    #def test_setBody_escapes_latin1_gt_lt(self):
+    #def test_setBody_w_base(self):
+    #def test_setBody_w_HTTP_content_compression(self):
+
     def test_setBody_compression_vary(self):
         # Vary header should be added here
         response = self._makeOne()

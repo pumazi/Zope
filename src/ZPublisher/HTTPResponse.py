@@ -424,11 +424,13 @@ class HTTPResponse(BaseResponse):
                 r'(iso[-_]8859[-_]1(:1987)?)))?$',re.I).match,
                 lock=None
                 ):
-        '''\
-        Set the body of the response
+        """ Set the body of the response
 
         Sets the return body equal to the (string) argument "body". Also
         updates the "content-length" return header.
+
+        If the body is already locked via a previous call, do nothing and
+        return None.
 
         You can also specify a title, in which case the title and body
         will be wrapped up in html, head, title, and body tags.
@@ -436,9 +438,17 @@ class HTTPResponse(BaseResponse):
         If the body is a 2-element tuple, then it will be treated
         as (title,body)
 
-        If is_error is true then the HTML will be formatted as a Zope error
-        message instead of a generic HTML page.
-        '''
+        If body is unicode, encode it.
+
+        If body is not a string or unicode, but has an 'asHTML' method, use
+        the result of that method as the body;  otherwise, use the 'str'
+        of body.
+
+        If is_error is true, format the HTML as a Zope error message instead
+        of a generic HTML page.
+
+        Return 'self' (XXX as a true value?).
+        """
         # allow locking of the body in the same way as the status
         if self._locked_body:
             return
@@ -470,7 +480,7 @@ class HTTPResponse(BaseResponse):
             bogus_str_search(body) is not None):
             self.notFoundError(body[1:-1])
         else:
-            if(title):
+            if title:
                 title = str(title)
                 if not is_error:
                     self.body = self._html(title, body)
@@ -480,18 +490,17 @@ class HTTPResponse(BaseResponse):
                 self.body = body
 
 
-        isHTML = self.isHTML(self.body)
-        if not self.headers.has_key('content-type'):
-            if isHTML:
-                c = 'text/html; charset=%s' % default_encoding
+        ct = self.headers.get('content-type')
+        if ct is None:
+            if self.isHTML(self.body):
+                ct = 'text/html; charset=%s' % default_encoding
             else:
-                c = 'text/plain; charset=%s' % default_encoding
-            self.setHeader('content-type', c)
+                ct = 'text/plain; charset=%s' % default_encoding
+            self.setHeader('content-type', ct)
         else:
-            c = self.headers['content-type']
-            if c.startswith('text/') and not 'charset=' in  c:
-                c = '%s; charset=%s' % (c, default_encoding)                
-                self.setHeader('content-type', c)
+            if ct.startswith('text/') and not 'charset=' in  ct:
+                ct = '%s; charset=%s' % (ct, default_encoding)                
+                self.setHeader('content-type', ct)
 
         # Some browsers interpret certain characters in Latin 1 as html
         # special characters. These cannot be removed by html_quote,
@@ -606,10 +615,10 @@ class HTTPResponse(BaseResponse):
 
 
     def _encode_unicode(self,body,
-                        charset_re=re.compile(r'(?:application|text)/[-+0-9a-z]+\s*;\s*' +
-                                              r'charset=([-_0-9a-z]+' +
-                                              r')(?:(?:\s*;)|\Z)',
-                                              re.IGNORECASE)):
+                        charset_re=re.compile(
+                           r'(?:application|text)/[-+0-9a-z]+\s*;\s*' +
+                           r'charset=([-_0-9a-z]+' +
+                           r')(?:(?:\s*;)|\Z)', re.IGNORECASE)):
 
         def fix_xml_preamble(body, encoding):
             """ fixes the encoding in the XML preamble according
@@ -618,7 +627,8 @@ class HTTPResponse(BaseResponse):
 
             if body.startswith('<?xml'):
                 pos_right = body.find('?>')  # right end of the XML preamble
-                body = ('<?xml version="1.0" encoding="%s" ?>' % encoding) + body[pos_right+2:]
+                body = ('<?xml version="1.0" encoding="%s" ?>'
+                            % encoding) + body[pos_right+2:]
             return body
 
         # Encode the Unicode data as requested
