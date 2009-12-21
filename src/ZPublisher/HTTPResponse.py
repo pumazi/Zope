@@ -1,6 +1,6 @@
 #############################################################################
 #
-# Copyright (c) 2001 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2001-2009 Zope Foundation and Contributors. All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.0 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -10,22 +10,28 @@
 # FOR A PARTICULAR PURPOSE
 #
 ##############################################################################
-'''CGI Response Output formatter
-
-$Id$'''
-__version__ = '$Revision: 1.81 $'[11:-2]
-
-import types, os, sys, re
-import zlib, struct
-from string import translate, maketrans
-from BaseResponse import BaseResponse
-from zExceptions import Unauthorized, Redirect
-from zExceptions.ExceptionFormatter import format_exception
-from ZPublisher import BadRequest, InternalError, NotFound
+""" CGI Response Output formatter
+"""
 from cgi import escape
+import os
+import re
+from string import maketrans
+from string import translate
+import struct
+import sys
+import types
 from urllib import quote
+import zlib
 
-nl2sp = maketrans('\n',' ')
+from zExceptions import Redirect
+from zExceptions import Unauthorized
+from zExceptions.ExceptionFormatter import format_exception
+from ZPublisher import BadRequest
+from ZPublisher import InternalError
+from ZPublisher import NotFound
+from ZPublisher.BaseResponse import BaseResponse
+
+nl2sp = maketrans('\n', ' ')
 
 # This may get overwritten during configuration
 default_encoding = 'iso-8859-15'
@@ -103,9 +109,6 @@ status_codes['resourcelockederror'] = 423
 
 start_of_header_search = re.compile('(<head[^>]*>)', re.IGNORECASE).search
 
-accumulate_header = {'set-cookie': 1}.has_key
-
-
 _gzip_header = ("\037\213" # magic
                 "\010" # compression method
                 "\000" # flags
@@ -129,8 +132,7 @@ def _scrubHeader(name, value):
     return ''.join(_CRLF.split(str(name))), ''.join(_CRLF.split(str(value)))
 
 class HTTPResponse(BaseResponse):
-    """\
-    An object representation of an HTTP response.
+    """ An object representation of an HTTP response.
 
     The Response type encapsulates all possible responses to HTTP
     requests.  Responses are normally created by the object publisher.
@@ -149,7 +151,6 @@ class HTTPResponse(BaseResponse):
     passed into the object must be used.
     """ #'
 
-    accumulated_headers = ''
     body = ''
     realm = 'Zope'
     _error_format = 'text/html'
@@ -162,16 +163,14 @@ class HTTPResponse(BaseResponse):
     # 2 - ignore accept-encoding (i.e. force)
     use_HTTP_content_compression = 0
 
-    def __init__(self,body='',status=200,headers=None,
+    def __init__(self, body='', status=200, headers=None,
                  stdout=sys.stdout, stderr=sys.stderr,):
-        '''\
-        Creates a new response. In effect, the constructor calls
-        "self.setBody(body); self.setStatus(status); for name in
-        headers.keys(): self.setHeader(name, headers[name])"
-        '''
+        """ Creates a new response using the given values.
+        """
         if headers is None:
             headers = {}
         self.headers = headers
+        self.accumulated_headers = []
 
         if status == 200:
             self.status = 200
@@ -187,36 +186,34 @@ class HTTPResponse(BaseResponse):
         self.stderr = stderr
 
     def retry(self):
-        """Return a response object to be used in a retry attempt
+        """ Return a cloned response object to be used in a retry attempt.
         """
-
         # This implementation is a bit lame, because it assumes that
         # only stdout stderr were passed to the constructor. OTOH, I
         # think that that's all that is ever passed.
-
         return self.__class__(stdout=self.stdout, stderr=self.stderr)
 
     _shutdown_flag = None
     def _requestShutdown(self, exitCode=0):
-        """Request that the server shut down with exitCode after fulfilling
-           the current request."""
+        """ Request that the server shut down with exitCode after fulfilling
+           the current request.
+        """
         import ZServer
         ZServer.exit_code = exitCode
         self._shutdown_flag = 1
 
     def _shutdownRequested(self):
-        """Returns true if this request requested a server shutdown."""
+        """ Returns true if this request requested a server shutdown.
+        """
         return self._shutdown_flag is not None
 
     def setStatus(self, status, reason=None, lock=None):
-        '''\
-        Sets the HTTP status code of the response; the argument may
-        either be an integer or a string from { OK, Created, Accepted,
-        NoContent, MovedPermanently, MovedTemporarily,
-        NotModified, BadRequest, Unauthorized, Forbidden,
-        NotFound, InternalError, NotImplemented, BadGateway,
-        ServiceUnavailable } that will be converted to the correct
-        integer value. '''
+        """ Set the HTTP status code of the response
+        
+        o The argument may either be an integer or a string from the
+          'status_reasons' dict values:  status messages will be converted
+          to the correct integer value.
+        """
         if self._locked_status:
             # Don't change the response status.
             # It has already been determined.
@@ -241,6 +238,7 @@ class HTTPResponse(BaseResponse):
                 reason = status_reasons[status]
             else:
                 reason = 'Unknown'
+
         self.setHeader('Status', "%d %s" % (status,str(reason)))
         self.errmsg = reason
         # lock the status if we're told to
@@ -256,12 +254,11 @@ class HTTPResponse(BaseResponse):
         if not scrubbed:
             name, value = _scrubHeader(name, value)
         key = name.lower()
-        if accumulate_header(key):
-            self.accumulated_headers = (
-                "%s%s: %s\r\n" % (self.accumulated_headers, name, value))
-            return
-        name = literal and name or key
-        self.headers[name] = value
+        if key == 'set-cookie':
+            self.accumulated_headers.append((name, value))
+        else:
+            name = literal and name or key
+            self.headers[name] = value
 
     def getHeader(self, name, literal=0):
         '''\
@@ -280,8 +277,7 @@ class HTTPResponse(BaseResponse):
         Set a new HTTP return header with the given value, while retaining
         any previously set headers with the same name.'''
         name, value = _scrubHeader(name, value)
-        self.accumulated_headers = (
-            "%s%s: %s\r\n" % (self.accumulated_headers, name, value))
+        self.accumulated_headers.append((name, value))
 
     __setitem__ = setHeader
 
@@ -805,7 +801,8 @@ class HTTPResponse(BaseResponse):
         if fatal and t is SystemExit and v.code == 0:
             body = self.setBody(
                 (str(t),
-                 'Zope has exited normally.<p>' + self._traceback(t, v, tb) + '</p>'),
+                 'Zope has exited normally.<p>'
+                    + self._traceback(t, v, tb) + '</p>'),
                 is_error=1)
         else:
             try:
@@ -881,15 +878,15 @@ class HTTPResponse(BaseResponse):
                 not headers.has_key('transfer-encoding'):
             self.setHeader('content-length',len(body))
 
-        headersl = []
-        append = headersl.append
+        chunks = []
+        append = chunks.append
 
         # status header must come first.
         append("Status: %s" % headers.get('status', '200 OK'))
         append("X-Powered-By: Zope (www.zope.org), Python (www.python.org)")
         if headers.has_key('status'):
             del headers['status']
-        for key, val in headers.items():
+        for key, value in headers.items():
             if key.lower() == key:
                 # only change non-literal header names
                 key = "%s%s" % (key[:1].upper(), key[1:])
@@ -899,11 +896,12 @@ class HTTPResponse(BaseResponse):
                     key = "%s-%s%s" % (key[:l],key[l+1:l+2].upper(),key[l+2:])
                     start = l + 1
                     l = key.find('-', start)
-            append("%s: %s" % (key, val))
-        if self.cookies:
-            headersl = headersl+self._cookie_list()
-        headersl[len(headersl):] = [self.accumulated_headers, body]
-        return '\r\n'.join(headersl)
+            append("%s: %s" % (key, value))
+        chunks.extend(self._cookie_list())
+        for key, value in self.accumulated_headers:
+            append("%s: %s" % (key, value))
+        append(body) # WTF?
+        return '\r\n'.join(chunks)
 
     def write(self,data):
         """\

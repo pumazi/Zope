@@ -202,37 +202,37 @@ class HTTPResponseTests(unittest.TestCase):
         response.setStatus(ResourceLockedError)
         self.assertEqual(response.status, 423)
 
-    def test_charset_no_header(self):
+    def test_ctor_charset_no_header(self):
         response = self._makeOne(body='foo')
         self.assertEqual(response.headers.get('content-type'),
                          'text/plain; charset=iso-8859-15')
 
-    def test_charset_text_header(self):
+    def test_ctor_charset_text_header(self):
         response = self._makeOne(body='foo',
                     headers={'content-type': 'text/plain'})
         self.assertEqual(response.headers.get('content-type'),
                          'text/plain; charset=iso-8859-15')
 
-    def test_charset_application_header_no_header(self):
+    def test_ctor_charset_application_header_no_header(self):
         response = self._makeOne(body='foo',
                     headers={'content-type': 'application/foo'})
         self.assertEqual(response.headers.get('content-type'),
                          'application/foo')
 
-    def test_charset_application_header_with_header(self):
-        response = self._makeOne(body='foo',
-                    headers={'content-type': 'application/foo; charset: something'})
+    def test_ctor_charset_application_header_with_header(self):
+        response = self._makeOne(body='foo', headers={'content-type':
+                                        'application/foo; charset: something'})
         self.assertEqual(response.headers.get('content-type'),
                          'application/foo; charset: something')
     
-    def test_charset_application_header_unicode(self):
+    def test_ctor_charset_application_header_unicode(self):
         response = self._makeOne(body=unicode('ärger', 'iso-8859-15'),
                     headers={'content-type': 'application/foo'})
         self.assertEqual(response.headers.get('content-type'),
                          'application/foo; charset=iso-8859-15')
         self.assertEqual(response.body, 'ärger')
 
-    def test_charset_application_header_unicode_1(self):
+    def test_ctor_charset_application_header_unicode_1(self):
         response = self._makeOne(body=unicode('ärger', 'iso-8859-15'),
                     headers={'content-type': 'application/foo; charset=utf-8'})
         self.assertEqual(response.headers.get('content-type'),
@@ -240,12 +240,19 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.body, unicode('ärger',
                          'iso-8859-15').encode('utf-8'))
 
-    def test_XMLEncodingRecoding(self):
-        xml = u'<?xml version="1.0" encoding="iso-8859-15" ?>\n<foo><bar/></foo>'
-        response = self._makeOne(body=xml, headers={'content-type': 'text/xml; charset=utf-8'})
-        self.assertEqual(xml.replace('iso-8859-15', 'utf-8')==response.body, True)
-        response = self._makeOne(body=xml, headers={'content-type': 'text/xml; charset=iso-8859-15'})
-        self.assertEqual(xml==response.body, True)
+    def test_ctor_body_recodes_to_match_content_type_charset(self):
+        xml = (u'<?xml version="1.0" encoding="iso-8859-15" ?>\n'
+                '<foo><bar/></foo>')
+        response = self._makeOne(body=xml, headers={'content-type':
+                                            'text/xml; charset=utf-8'})
+        self.assertEqual(response.body, xml.replace('iso-8859-15', 'utf-8'))
+
+    def test_ctor_body_already_matches_charset_unchanged(self):
+        xml = (u'<?xml version="1.0" encoding="iso-8859-15" ?>\n'
+                '<foo><bar/></foo>')
+        response = self._makeOne(body=xml, headers={'content-type':
+                                            'text/xml; charset=iso-8859-15'})
+        self.assertEqual(response.body, xml)
 
     def test_addHeader_drops_CRLF(self):
         # RFC2616 disallows CRLF in a header value.
@@ -253,7 +260,7 @@ class HTTPResponseTests(unittest.TestCase):
         response.addHeader('Location',
                            'http://www.ietf.org/rfc/\r\nrfc2616.txt')
         self.assertEqual(response.accumulated_headers,
-                         'Location: http://www.ietf.org/rfc/rfc2616.txt\r\n')
+                         [('Location', 'http://www.ietf.org/rfc/rfc2616.txt')])
 
     def test_appendHeader_drops_CRLF(self):
         # RFC2616 disallows CRLF in a header value.
@@ -278,9 +285,9 @@ class HTTPResponseTests(unittest.TestCase):
         response.setHeader('Set-Cookie',
                        'violation="http://www.ietf.org/rfc/\r\nrfc2616.txt"')
         self.assertEqual(response.accumulated_headers,
-                'Set-Cookie: allowed="OK"\r\n' +
-                'Set-Cookie: '
-                'violation="http://www.ietf.org/rfc/rfc2616.txt"\r\n')
+                        [('Set-Cookie', 'allowed="OK"'),
+                         ('Set-Cookie',
+                          'violation="http://www.ietf.org/rfc/rfc2616.txt"')])
 
     def test_setBody_compression_vary(self):
         # Vary header should be added here
@@ -301,6 +308,3 @@ def test_suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(HTTPResponseTests, 'test'))
     return suite
-
-if __name__ == '__main__':
-    unittest.main(defaultTest='test_suite')
