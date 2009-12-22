@@ -515,7 +515,9 @@ class HTTPResponse(BaseResponse):
                 self.setHeader('content-type', content_type)
 
         self.setHeader('content-length', len(self.body))
+
         self.insertBase()
+
         if self.use_HTTP_content_compression and \
             self.headers.get('content-encoding', 'gzip') == 'gzip':
             # use HTTP content encoding to compress body contents unless
@@ -544,10 +546,10 @@ class HTTPResponse(BaseResponse):
                         # respect Accept-Encoding client header
                         vary = self.getHeader('Vary')
                         if vary is None or 'Accept-Encoding' not in vary: 
-                            self.appendHeader('Vary','Accept-Encoding')
+                            self.appendHeader('Vary', 'Accept-Encoding')
         return self
 
-    def enableHTTPCompression(self,REQUEST={},force=0,disable=0,query=0):
+    def enableHTTPCompression(self, REQUEST={}, force=0, disable=0, query=0):
         """Enable HTTP Content Encoding with gzip compression if possible
 
            REQUEST -- used to check if client can accept compression

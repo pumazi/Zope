@@ -622,24 +622,74 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.body, AFTER)
         self.assertEqual(response.getHeader('Content-Length'), str(len(AFTER)))
 
+    def test_setBody_calls_insertBase(self):
+        response = self._makeOne()
+        lamb = {}
+        def _insertBase():
+            lamb['flavor'] = 'CURRY'
+        response.insertBase = _insertBase
+        response.setBody('Garlic Naan')
+        self.assertEqual(lamb['flavor'], 'CURRY')
 
-    #TODO
-    #def test_setBody_w_base(self):
     #def test_setBody_w_HTTP_content_compression(self):
 
-    def test_setBody_compression_vary(self):
+    def test_setBody_compression_uncompressible_mimetype(self):
+        BEFORE = 'foo' * 100 # body must get smaller on compression
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'image/jpeg')
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setBody(BEFORE)
+        self.failIf(response.getHeader('Content-Encoding'))
+        self.assertEqual(response.body, BEFORE)
+
+    def test_setBody_compression_existing_encoding(self):
+        BEFORE = 'foo' * 100 # body must get smaller on compression
+        response = self._makeOne()
+        response.setHeader('Content-Encoding', 'piglatin')
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setBody(BEFORE)
+        self.assertEqual(response.getHeader('Content-Encoding'), 'piglatin')
+        self.assertEqual(response.body, BEFORE)
+
+    def test_setBody_compression_too_short_to_gzip(self):
+        BEFORE = 'foo' # body must get smaller on compression
+        response = self._makeOne()
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setBody(BEFORE)
+        self.failIf(response.getHeader('Content-Encoding'))
+        self.assertEqual(response.body, BEFORE)
+
+    def test_setBody_compression_no_prior_vary_header(self):
         # Vary header should be added here
         response = self._makeOne()
-        response.enableHTTPCompression(REQUEST={'HTTP_ACCEPT_ENCODING': 'gzip'})
-        response.setBody('foo'*100) # body must get smaller on compression
-        self.assertEqual('Accept-Encoding' in response.getHeader('Vary'), True)
-        # But here it would be unnecessary
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setBody('foo' * 100) # body must get smaller on compression
+        self.failUnless('Accept-Encoding' in response.getHeader('Vary'))
+
+    def test_setBody_compression_w_prior_vary_header_wo_encoding(self):
+        # Vary header should be added here
         response = self._makeOne()
-        response.enableHTTPCompression(REQUEST={'HTTP_ACCEPT_ENCODING': 'gzip'})
-        response.setHeader('Vary', 'Accept-Encoding,Accept-Language')
-        before = response.getHeader('Vary')
+        response.setHeader('Vary', 'Cookie')
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setBody('foo' * 100) # body must get smaller on compression
+        self.failUnless('Accept-Encoding' in response.getHeader('Vary'))
+
+    def test_setBody_compression_w_prior_vary_header_incl_encoding(self):
+        # Vary header already had Accept-Ecoding', do'nt munge
+        PRIOR = 'Accept-Encoding,Accept-Language'
+        response = self._makeOne()
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'})
+        response.setHeader('Vary', PRIOR)
         response.setBody('foo'*100)
-        self.assertEqual(before, response.getHeader('Vary'))
+        self.assertEqual(response.getHeader('Vary'), PRIOR)
+
+    def test_setBody_compression_no_prior_vary_header_but_forced(self):
+        # Compression forced, don't add a Vary entry for compression.
+        response = self._makeOne()
+        response.enableHTTPCompression({'HTTP_ACCEPT_ENCODING': 'gzip'},
+                                       force=True)
+        response.setBody('foo' * 100) # body must get smaller on compression
+        self.assertEqual(response.getHeader('Vary'), None)
 
 
 def test_suite():
