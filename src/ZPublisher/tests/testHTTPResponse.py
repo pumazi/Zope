@@ -27,7 +27,6 @@ class HTTPResponseTests(unittest.TestCase):
     def test_ctor_defaults(self):
         import sys
         response = self._makeOne()
-        self.assertEqual(response.headers, {'status': '200 OK'}) # XXX WTF?
         self.assertEqual(response.accumulated_headers, [])
         self.assertEqual(response.status, 200)
         self.assertEqual(response.errmsg, 'OK')
@@ -44,30 +43,26 @@ class HTTPResponseTests(unittest.TestCase):
     def test_ctor_w_headers(self):
         response = self._makeOne(headers={'foo': 'bar'})
         self.assertEqual(response.headers, {'foo': 'bar',
-                                            'status': '200 OK', # XXX WTF
                                            })
 
     def test_ctor_w_status_code(self):
         response = self._makeOne(status=401)
         self.assertEqual(response.status, 401)
         self.assertEqual(response.errmsg, 'Unauthorized')
-        self.assertEqual(response.headers,
-                         {'status': '401 Unauthorized'}) # XXX WTF?
+        self.assertEqual(response.headers, {})
 
     def test_ctor_w_status_errmsg(self):
         response = self._makeOne(status='Unauthorized')
         self.assertEqual(response.status, 401)
         self.assertEqual(response.errmsg, 'Unauthorized')
-        self.assertEqual(response.headers,
-                         {'status': '401 Unauthorized'}) # XXX WTF?
+        self.assertEqual(response.headers, {})
 
     def test_ctor_w_status_exception(self):
         from zExceptions import Unauthorized
         response = self._makeOne(status=Unauthorized)
         self.assertEqual(response.status, 401)
         self.assertEqual(response.errmsg, 'Unauthorized')
-        self.assertEqual(response.headers,
-                         {'status': '401 Unauthorized'}) # XXX WTF?
+        self.assertEqual(response.headers, {})
 
     def test_ctor_charset_no_content_type_header(self):
         response = self._makeOne(body='foo')

@@ -181,7 +181,6 @@ class HTTPResponse(BaseResponse):
         if status == 200:
             self.status = 200
             self.errmsg = 'OK'
-            headers['status'] = "200 OK"
         else:
             self.setStatus(status)
 
@@ -232,7 +231,6 @@ class HTTPResponse(BaseResponse):
             else:
                 reason = 'Unknown'
 
-        self.setHeader('Status', "%d %s" % (status,str(reason)))
         self.errmsg = reason
         # lock the status if we're told to
         if lock:
@@ -924,10 +922,8 @@ class HTTPResponse(BaseResponse):
         append = chunks.append
 
         # status header must come first.
-        append("Status: %s" % headers.get('status', '200 OK')) # WTF
+        append("Status: %d %s" % (self.status, self.errmsg))
         append("X-Powered-By: Zope (www.zope.org), Python (www.python.org)")
-        if headers.has_key('status'): # WTF
-            del headers['status']
         for key, value in headers.items():
             if key.lower() == key:
                 # only change non-literal header names
