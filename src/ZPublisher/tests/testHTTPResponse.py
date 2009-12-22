@@ -1065,9 +1065,31 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(lines[4], '')
         self.assertEqual(lines[5], 'BLAH')
 
-    # TODO
-    # def test_write_already_wrote
-    # def test_write_not_already_wrote
+    def test_write_already_wrote(self):
+        from StringIO import StringIO
+        stdout = StringIO()
+        response = self._makeOne(stdout=stdout)
+        response.write('Kilroy was here!')
+        self.failUnless(response._wrote)
+        lines = stdout.getvalue().split('\r\n')
+        self.assertEqual(len(lines), 5)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], '')
+        self.assertEqual(lines[4], 'Kilroy was here!')
+
+    def test_write_not_already_wrote(self):
+        from StringIO import StringIO
+        stdout = StringIO()
+        response = self._makeOne(stdout=stdout)
+        response._wrote = True
+        response.write('Kilroy was here!')
+        lines = stdout.getvalue().split('\r\n')
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0], 'Kilroy was here!')
+
 
 def test_suite():
     suite = unittest.TestSuite()
