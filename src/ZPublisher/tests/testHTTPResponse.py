@@ -913,7 +913,11 @@ class HTTPResponseTests(unittest.TestCase):
 
     # def test_exception_* WAAAAAA!
 
-    #TODO
+    def test___str__already_wrote(self):
+        response = self._makeOne()
+        response._wrote = True
+        self.assertEqual(str(response), '')
+
     def test___str__empty(self):
         response = self._makeOne()
         result = str(response)
@@ -926,9 +930,38 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(lines[3], '')
         self.assertEqual(lines[4], '')
 
+    def test___str__existing_content_length(self):
+        # The application can break clients by setting a bogus length;  we
+        # don't do anything to stop that.
+        response = self._makeOne()
+        response.setHeader('Content-Length', 42)
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 5)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 42')
+        self.assertEqual(lines[3], '')
+        self.assertEqual(lines[4], '')
+
+    def test___str__existing_transfer_encoding(self):
+        # If 'Transfer-Encoding' is set, don't force 'Content-Length'.
+        response = self._makeOne()
+        response.setHeader('Transfer-Encoding', 'slurry')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 5)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Transfer-Encoding: slurry')
+        self.assertEqual(lines[3], '')
+        self.assertEqual(lines[4], '')
+
     def test___str__after_setHeader(self):
         response = self._makeOne()
-        response.setHeader('X-Consistency', 'Foolish')
+        response.setHeader('x-consistency', 'Foolish')
         result = str(response)
         lines = result.split('\r\n')
         self.assertEqual(len(lines), 6)
@@ -937,6 +970,20 @@ class HTTPResponseTests(unittest.TestCase):
                                    'Python (www.python.org)')
         self.assertEqual(lines[2], 'Content-Length: 0')
         self.assertEqual(lines[3], 'X-Consistency: Foolish')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], '')
+
+    def test___str__after_setHeader_literal(self):
+        response = self._makeOne()
+        response.setHeader('X-consistency', 'Foolish', literal=True)
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'X-consistency: Foolish')
         self.assertEqual(lines[4], '')
         self.assertEqual(lines[5], '')
 
@@ -1018,6 +1065,7 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(lines[4], '')
         self.assertEqual(lines[5], 'BLAH')
 
+    # TODO
     # def test_write_already_wrote
     # def test_write_not_already_wrote
 
