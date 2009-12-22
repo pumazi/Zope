@@ -911,9 +911,113 @@ class HTTPResponseTests(unittest.TestCase):
 
     #TODO
 
-    # def test_exception*
-    # def test__cookie_list ?
-    # def test___str__*
+    # def test_exception_* WAAAAAA!
+
+    #TODO
+    def test___str__empty(self):
+        response = self._makeOne()
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 5)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], '')
+        self.assertEqual(lines[4], '')
+
+    def test___str__after_setHeader(self):
+        response = self._makeOne()
+        response.setHeader('X-Consistency', 'Foolish')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'X-Consistency: Foolish')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], '')
+
+    def test___str__after_redirect(self):
+        response = self._makeOne()
+        response.redirect('http://example.com/')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 302 Moved Temporarily')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'Location: http://example.com/')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], '')
+
+    def test___str__after_setCookie_appendCookie(self):
+        response = self._makeOne()
+        response.setCookie('foo', 'bar', path='/')
+        response.appendCookie('foo', 'baz')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'Set-Cookie: foo="bar%3Abaz"; '
+                                   'Path=/')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], '')
+
+    def test___str__after_expireCookie(self):
+        response = self._makeOne()
+        response.expireCookie('qux', path='/')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'Set-Cookie: qux="deleted"; '
+                                   'Path=/; '
+                                   'Expires=Wed, 31-Dec-97 23:59:59 GMT; '
+                                   'Max-Age=0')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], '')
+
+    def test___str__after_addHeader(self):
+        response = self._makeOne()
+        response.addHeader('X-Consistency', 'Foolish')
+        response.addHeader('X-Consistency', 'Oatmeal')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 7)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 0')
+        self.assertEqual(lines[3], 'X-Consistency: Foolish')
+        self.assertEqual(lines[4], 'X-Consistency: Oatmeal')
+        self.assertEqual(lines[5], '')
+        self.assertEqual(lines[6], '')
+
+    def test___str__w_body(self):
+        response = self._makeOne()
+        response.setBody('BLAH')
+        result = str(response)
+        lines = result.split('\r\n')
+        self.assertEqual(len(lines), 6)
+        self.assertEqual(lines[0], 'Status: 200 OK')
+        self.assertEqual(lines[1], 'X-Powered-By: Zope (www.zope.org), '
+                                   'Python (www.python.org)')
+        self.assertEqual(lines[2], 'Content-Length: 4')
+        self.assertEqual(lines[3],
+                         'Content-Type: text/plain; charset=iso-8859-15')
+        self.assertEqual(lines[4], '')
+        self.assertEqual(lines[5], 'BLAH')
+
     # def test_write_already_wrote
     # def test_write_not_already_wrote
 

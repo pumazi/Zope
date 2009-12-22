@@ -924,9 +924,9 @@ class HTTPResponse(BaseResponse):
         append = chunks.append
 
         # status header must come first.
-        append("Status: %s" % headers.get('status', '200 OK'))
+        append("Status: %s" % headers.get('status', '200 OK')) # WTF
         append("X-Powered-By: Zope (www.zope.org), Python (www.python.org)")
-        if headers.has_key('status'):
+        if headers.has_key('status'): # WTF
             del headers['status']
         for key, value in headers.items():
             if key.lower() == key:
@@ -942,7 +942,8 @@ class HTTPResponse(BaseResponse):
         chunks.extend(self._cookie_list())
         for key, value in self.accumulated_headers:
             append("%s: %s" % (key, value))
-        append(body) # WTF?
+        append('') # RFC 2616 mandates empty line between headers and payload
+        append(body) 
         return '\r\n'.join(chunks)
 
     def write(self,data):
