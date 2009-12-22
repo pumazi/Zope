@@ -909,10 +909,6 @@ class HTTPResponseTests(unittest.TestCase):
         else:
             self.fail("Didn't raise Unauthorized")
 
-    #TODO
-
-    # def test_exception_* WAAAAAA!
-
     def test___str__already_wrote(self):
         response = self._makeOne()
         response._wrote = True
@@ -1089,6 +1085,9 @@ class HTTPResponseTests(unittest.TestCase):
         lines = stdout.getvalue().split('\r\n')
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0], 'Kilroy was here!')
+
+    #TODO
+    # def test_exception_* WAAAAAA!
 
 
 def test_suite():
