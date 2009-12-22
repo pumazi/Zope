@@ -490,26 +490,29 @@ class HTTPResponse(BaseResponse):
                 self.body = body
 
 
-        ct = self.headers.get('content-type')
-        if ct is None:
-            if self.isHTML(self.body):
-                ct = 'text/html; charset=%s' % default_encoding
-            else:
-                ct = 'text/plain; charset=%s' % default_encoding
-            self.setHeader('content-type', ct)
-        else:
-            if ct.startswith('text/') and not 'charset=' in  ct:
-                ct = '%s; charset=%s' % (ct, default_encoding)                
-                self.setHeader('content-type', ct)
+        content_type = self.headers.get('content-type')
 
         # Some browsers interpret certain characters in Latin 1 as html
         # special characters. These cannot be removed by html_quote,
         # because this is not the case for all encodings.
-        content_type = self.headers['content-type']
-        if content_type == 'text/html' or latin1_alias_match(
-            content_type) is not None:
+        if (content_type == 'text/html' or
+            content_type and latin1_alias_match(content_type) is not None):
             body = '&lt;'.join(body.split('\213'))
             body = '&gt;'.join(body.split('\233'))
+            self.body = body
+
+        if content_type is None:
+            if self.isHTML(self.body):
+                content_type = 'text/html; charset=%s' % default_encoding
+            else:
+                content_type = 'text/plain; charset=%s' % default_encoding
+            self.setHeader('content-type', content_type)
+        else:
+            if (content_type.startswith('text/') and
+                'charset=' not in content_type):
+                content_type = '%s; charset=%s' % (content_type,
+                                                   default_encoding)
+                self.setHeader('content-type', content_type)
 
         self.setHeader('content-length', len(self.body))
         self.insertBase()

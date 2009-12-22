@@ -577,7 +577,7 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.getHeader('Content-Length'), str(len(HTML)))
 
     def test_setBody_object_with_unicode(self):
-        HTML = u'<html><head></head><body><h1>Tr\u0039</body></html>'
+        HTML = u'<html><head></head><body><h1>Tr\u0039s Bien</h1></body></html>'
         ENCODED = HTML.encode('iso-8859-15')
         response = self._makeOne()
         result = response.setBody(HTML)
@@ -598,8 +598,32 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         self.assertRaises(NotFound, response.setBody, BOGUS)
 
+    def test_setBody_html_no_charset_escapes_latin1_gt_lt(self):
+        response = self._makeOne()
+        BEFORE = ('<html><head></head><body><p>LT: \213</p>'
+                  '<p>GT: \233</p></body></html>')
+        AFTER = ('<html><head></head><body><p>LT: &lt;</p>'
+                  '<p>GT: &gt;</p></body></html>')
+        response.setHeader('Content-Type', 'text/html')
+        result = response.setBody(BEFORE)
+        self.failUnless(result)
+        self.assertEqual(response.body, AFTER)
+        self.assertEqual(response.getHeader('Content-Length'), str(len(AFTER)))
+
+    def test_setBody_latin_alias_escapes_latin1_gt_lt(self):
+        response = self._makeOne()
+        BEFORE = ('<html><head></head><body><p>LT: \213</p>'
+                  '<p>GT: \233</p></body></html>')
+        AFTER = ('<html><head></head><body><p>LT: &lt;</p>'
+                  '<p>GT: &gt;</p></body></html>')
+        response.setHeader('Content-Type', 'text/html; charset=latin1')
+        result = response.setBody(BEFORE)
+        self.failUnless(result)
+        self.assertEqual(response.body, AFTER)
+        self.assertEqual(response.getHeader('Content-Length'), str(len(AFTER)))
+
+
     #TODO
-    #def test_setBody_escapes_latin1_gt_lt(self):
     #def test_setBody_w_base(self):
     #def test_setBody_w_HTTP_content_compression(self):
 
