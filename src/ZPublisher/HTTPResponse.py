@@ -602,6 +602,13 @@ class HTTPResponse(BaseResponse):
 
         return self.use_HTTP_content_compression
 
+    def redirect(self, location, status=302, lock=0):
+        """Cause a redirection without raising an error"""
+        self.setStatus(status, lock=lock)
+        self.setHeader('Location', location)
+
+        return str(location)
+
     # The following two methods are part of a private protocol with the
     # publisher for handling fatal import errors and TTW shutdown requests.
     _shutdown_flag = None
@@ -663,20 +670,6 @@ class HTTPResponse(BaseResponse):
     def _traceback(self, t, v, tb, as_html=1):
         tb = format_exception(t, v, tb, as_html=as_html)
         return '\n'.join(tb)
-
-    def redirect(self, location, status=302, lock=0):
-        """Cause a redirection without raising an error"""
-        self.setStatus(status)
-        self.setHeader('Location', location)
-
-        location = str(location)
-
-        if lock:
-            # Don't let anything change the status code.
-            # The "lock" argument needs to be set when redirecting
-            # from a standard_error_message page.
-            self._locked_status = 1
-        return location
 
 
     def _html(self,title,body):

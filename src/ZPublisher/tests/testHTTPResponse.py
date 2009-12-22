@@ -4,6 +4,17 @@ import unittest
 
 class HTTPResponseTests(unittest.TestCase):
 
+    _old_default_encoding = None
+
+    def tearDown(self):
+        if self._old_default_encoding is not None:
+            self._setDefaultEncoding(self._old_default_encoding)
+
+    def _setDefaultEncoding(self, value):
+        from ZPublisher import HTTPResponse as module
+        (module.default_encoding,
+         self._old_default_encoding) = (value, module.default_encoding)
+
     def _getTargetClass(self):
 
         from ZPublisher.HTTPResponse import HTTPResponse
@@ -81,7 +92,7 @@ class HTTPResponseTests(unittest.TestCase):
                                         'application/foo; charset: something'})
         self.assertEqual(response.headers.get('content-type'),
                          'application/foo; charset: something')
-    
+
     def test_ctor_charset_unicode_body_application_header(self):
         BODY = unicode('ärger', 'iso-8859-15')
         response = self._makeOne(body=BODY,
@@ -691,6 +702,87 @@ class HTTPResponseTests(unittest.TestCase):
         response.setBody('foo' * 100) # body must get smaller on compression
         self.assertEqual(response.getHeader('Vary'), None)
 
+    def test_redirect_defaults(self):
+        URL = 'http://example.com'
+        response = self._makeOne()
+        result = response.redirect(URL)
+        self.assertEqual(result, URL)
+        self.assertEqual(response.status, 302)
+        self.assertEqual(response.getHeader('Location'), URL)
+        self.failIf(response._locked_status)
+
+    def test_redirect_explicit_status(self):
+        URL = 'http://example.com'
+        response = self._makeOne()
+        result = response.redirect(URL, status=307)
+        self.assertEqual(response.status, 307)
+        self.assertEqual(response.getHeader('Location'), URL)
+        self.failIf(response._locked_status)
+
+    def test_redirect_w_lock(self):
+        URL = 'http://example.com'
+        response = self._makeOne()
+        result = response.redirect(URL, lock=True)
+        self.assertEqual(response.status, 302)
+        self.assertEqual(response.getHeader('Location'), URL)
+        self.failUnless(response._locked_status)
+
+    def test__encode_unicode_no_content_type_uses_default_encoding(self):
+        self._setDefaultEncoding('UTF8')
+        UNICODE = u'<h1>Tr\u0039s Bien</h1>'
+        response = self._makeOne()
+        self.assertEqual(response._encode_unicode(UNICODE),
+                         UNICODE.encode('UTF8'))
+
+    def test__encode_unicode_w_content_type_no_charset_updates_charset(self):
+        self._setDefaultEncoding('UTF8')
+        UNICODE = u'<h1>Tr\u0039s Bien</h1>'
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html')
+        self.assertEqual(response._encode_unicode(UNICODE),
+                         UNICODE.encode('UTF8'))
+        response.getHeader('Content-Type', 'text/html; charset=UTF8')
+
+    def test__encode_unicode_w_content_type_w_charset(self):
+        self._setDefaultEncoding('UTF8')
+        UNICODE = u'<h1>Tr\u0039s Bien</h1>'
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html; charset=latin1')
+        self.assertEqual(response._encode_unicode(UNICODE),
+                         UNICODE.encode('latin1'))
+        response.getHeader('Content-Type', 'text/html; charset=latin1')
+
+    def test__encode_unicode_w_content_type_w_charset_xml_preamble(self):
+        self._setDefaultEncoding('UTF8')
+        PREAMBLE = u'<?xml version="1.0" ?>'
+        ELEMENT = u'<element>Tr\u0039s Bien</element>'
+        UNICODE = u'\n'.join([PREAMBLE, ELEMENT])
+        response = self._makeOne()
+        response.setHeader('Content-Type', 'text/html; charset=latin1')
+        self.assertEqual(response._encode_unicode(UNICODE),
+                         '<?xml version="1.0" encoding="latin1" ?>\n'
+                         + ELEMENT.encode('latin1'))
+        response.getHeader('Content-Type', 'text/html; charset=latin1')
+
+    def test_quoteHTML(self):
+        BEFORE = '<p>This is a story about a boy named "Sue"</p>'
+        AFTER = ('&lt;p&gt;This is a story about a boy named '
+                 '&quot;Sue&quot;&lt;/p&gt;')
+        response = self._makeOne()
+        self.assertEqual(response.quoteHTML(BEFORE), AFTER)
+
+    #TODO
+    # def test_notFoundError
+    # def test_forbiddenError
+    # def test_debugError
+    # def test_badRequestError
+    # def test__unauthorized
+    # def test_unauthorized
+    # def test_exception*
+    # def test__cookie_list ?
+    # def test___str__*
+    # def test_write_already_wrote
+    # def test_write_not_already_wrote
 
 def test_suite():
     suite = unittest.TestSuite()
