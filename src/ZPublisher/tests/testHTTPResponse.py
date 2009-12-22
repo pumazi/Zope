@@ -771,13 +771,146 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         self.assertEqual(response.quoteHTML(BEFORE), AFTER)
 
+    def test_notFoundError(self):
+        from ZPublisher import NotFound
+        response = self._makeOne()
+        try:
+            response.notFoundError()
+        except NotFound, raised:
+            self.assertEqual(response.status, 404)
+            self.failUnless("<p><b>Resource:</b> Unknown</p>" in str(raised))
+        else:
+            self.fail("Didn't raise NotFound")
+
+    def test_notFoundError_w_entry(self):
+        from ZPublisher import NotFound
+        response = self._makeOne()
+        try:
+            response.notFoundError('ENTRY')
+        except NotFound, raised:
+            self.assertEqual(response.status, 404)
+            self.failUnless("<p><b>Resource:</b> ENTRY</p>" in str(raised))
+        else:
+            self.fail("Didn't raise NotFound")
+
+    def test_forbiddenError(self):
+        from ZPublisher import NotFound
+        response = self._makeOne()
+        try:
+            response.forbiddenError()
+        except NotFound, raised:
+            self.assertEqual(response.status, 404)
+            self.failUnless("<p><b>Resource:</b> Unknown</p>" in str(raised))
+        else:
+            self.fail("Didn't raise NotFound")
+
+    def test_forbiddenError_w_entry(self):
+        from ZPublisher import NotFound
+        response = self._makeOne()
+        try:
+            response.forbiddenError('ENTRY')
+        except NotFound, raised:
+            self.assertEqual(response.status, 404)
+            self.failUnless("<p><b>Resource:</b> ENTRY</p>" in str(raised))
+        else:
+            self.fail("Didn't raise NotFound")
+
+    def test_debugError(self):
+        from ZPublisher import NotFound
+        response = self._makeOne()
+        try:
+            response.debugError('testing')
+        except NotFound, raised:
+            self.assertEqual(response.status, 200)
+            self.failUnless("Zope has encountered a problem publishing "
+                            "your object.<p>\ntesting</p>" in str(raised))
+        else:
+            self.fail("Didn't raise NotFound")
+
+    def test_badRequestError_valid_parameter_name(self):
+        from ZPublisher import BadRequest
+        response = self._makeOne()
+        try:
+            response.badRequestError('some_parameter')
+        except BadRequest, raised:
+            self.assertEqual(response.status, 400)
+            self.failUnless("The parameter, <em>some_parameter</em>, "
+                            "was omitted from the request." in str(raised))
+        else:
+            self.fail("Didn't raise BadRequest")
+
+    def test_badRequestError_invalid_parameter_name(self):
+        from ZPublisher import InternalError
+        response = self._makeOne()
+        try:
+            response.badRequestError('URL1')
+        except InternalError, raised:
+            self.assertEqual(response.status, 400)
+            self.failUnless("Sorry, an internal error occurred in this "
+                            "resource." in str(raised))
+        else:
+            self.fail("Didn't raise InternalError")
+
+    def test__unauthorized_no_realm(self):
+        response = self._makeOne()
+        response.realm = ''
+        response._unauthorized()
+        self.failIf('WWW-Authenticate' in response.headers)
+
+    def test__unauthorized_w_default_realm(self):
+        response = self._makeOne()
+        response._unauthorized()
+        self.failUnless('WWW-Authenticate' in response.headers) #literal
+        self.assertEqual(response.headers['WWW-Authenticate'],
+                         'basic realm="Zope"')
+
+    def test__unauthorized_w_realm(self):
+        response = self._makeOne()
+        response.realm = 'Folly'
+        response._unauthorized()
+        self.failUnless('WWW-Authenticate' in response.headers) #literal
+        self.assertEqual(response.headers['WWW-Authenticate'],
+                         'basic realm="Folly"')
+
+    def test_unauthorized_no_debug_mode(self):
+        from zExceptions import Unauthorized
+        response = self._makeOne()
+        try:
+            response.unauthorized()
+        except Unauthorized, raised:
+            self.assertEqual(response.status, 200) # publisher sets 401 later
+            self.failUnless("<strong>You are not authorized "
+                            "to access this resource.</strong>" in str(raised))
+        else:
+            self.fail("Didn't raise Unauthorized")
+
+    def test_unauthorized_w_debug_mode_no_credentials(self):
+        from zExceptions import Unauthorized
+        response = self._makeOne()
+        response.debug_mode = True
+        try:
+            response.unauthorized()
+        except Unauthorized, raised:
+            self.failUnless("<p>\nNo Authorization header found.</p>"
+                                in str(raised))
+        else:
+            self.fail("Didn't raise Unauthorized")
+
+    def test_unauthorized_w_debug_mode_w_credentials(self):
+        from zExceptions import Unauthorized
+        response = self._makeOne()
+        response.debug_mode = True
+        response._auth = 'bogus'
+        try:
+            response.unauthorized()
+        except Unauthorized, raised:
+            self.failUnless("<p>\nUsername and password are not correct.</p>"
+                                in str(raised))
+        else:
+            self.fail("Didn't raise Unauthorized")
+
     #TODO
-    # def test_notFoundError
-    # def test_forbiddenError
-    # def test_debugError
-    # def test_badRequestError
-    # def test__unauthorized
-    # def test_unauthorized
+
     # def test_exception*
     # def test__cookie_list ?
     # def test___str__*
