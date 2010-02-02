@@ -20,6 +20,46 @@ class SQLAlias(ExtensionClass.Base):
 
 class NoBrains: pass
 
+
+def record_cls_factory (data, schema, aliases, parent, brains, zbrains):
+    """Return a custom 'record' class inheriting from Record, Implicit,
+    brains, and zbrains).
+    """
+    # alternate implementation
+    # r = type('r', (Record, Implicit, brains, zbrains), {})
+    class r(Record, Implicit, brains, zbrains):
+        'Result record class'
+
+    # The Record class needs a __record_schema__ ...why?
+    r.__record_schema__=schema
+
+    # Every attribute in the Record class starting with '__' should
+    # take precedence over the same named attributes of the mixin.
+    for k in Record.__dict__.keys():
+        if k[:2]=='__':
+            setattr(r,k,getattr(Record,k))
+
+    # Add SQL Aliases
+    for k, v in aliases:
+        if not hasattr(r, k):
+            setattr(r, k, v)
+
+    # Use the init from the provided brains, if it has one;
+    # otherwise, create a default init which calls the
+    # Record base class __init__, and can accept params
+    # to allow additional custom initialization.
+    if hasattr(brains, '__init__'):
+        binit=brains.__init__
+        if hasattr(binit,'im_func'): binit=binit.im_func
+        def __init__(self, data, parent, binit=binit):
+            Record.__init__(self,data)
+            if parent is not None: self=self.__of__(parent)
+            binit(self)
+
+        setattr(r, '__init__', __init__)
+    return r
+
+
 class Results:
     """Class for providing a nice interface to DBI result data
     """
@@ -62,30 +102,8 @@ class Results:
         # Create a record class to hold the records.
         names=tuple(names)
 
-        class r(Record, Implicit, brains, zbrains):
-            'Result record class'
-
-        r.__record_schema__=schema
-        for k in Record.__dict__.keys():
-            if k[:2]=='__':
-                setattr(r,k,getattr(Record,k))
-
-        # Add SQL Aliases
-        for k, v in aliases:
-            if not hasattr(r, k):
-                setattr(r, k, v)
-
-        if hasattr(brains, '__init__'):
-            binit=brains.__init__
-            if hasattr(binit,'im_func'): binit=binit.im_func
-            def __init__(self, data, parent, binit=binit):
-                Record.__init__(self,data)
-                if parent is not None: self=self.__of__(parent)
-                binit(self)
-
-            setattr(r, '__init__', __init__)
-
-        self._class=r
+        self._class = record_cls_factory (data, schema, aliases, parent, brains,
+                                          zbrains)
 
         # OK, we've read meta data, now get line indexes
 
