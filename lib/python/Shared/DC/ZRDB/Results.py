@@ -10,6 +10,8 @@
 # FOR A PARTICULAR PURPOSE
 #
 ##############################################################################
+
+
 import ExtensionClass
 from Acquisition import Implicit
 from Record import Record
@@ -25,10 +27,7 @@ def record_cls_factory (data, schema, aliases, parent, brains, zbrains):
     """Return a custom 'record' class inheriting from Record, Implicit,
     brains, and zbrains).
     """
-    # alternate implementation
-    # r = type('r', (Record, Implicit, brains, zbrains), {})
-    class r(Record, Implicit, brains, zbrains):
-        'Result record class'
+    r = type('r', (Record, Implicit, brains, zbrains), {})
 
     # The Record class needs a __record_schema__ ...why?
     r.__record_schema__=schema
