@@ -10,53 +10,182 @@
 # FOR A PARTICULAR PURPOSE
 #
 ##############################################################################
+import pdb
 
-
-import ExtensionClass
 from Acquisition import Implicit
-from Record import Record
+from Shared.DC.ZRDB.namedtuple import namedtuple
 
-class SQLAlias(ExtensionClass.Base):
-    def __init__(self, name): self._n=name
-    def __of__(self, parent): return getattr(parent, self._n)
+##class Record(object):
+##    def __init__(self, data, parent, binit=None):
+##        if parent is not None:
+##            pass
+##            # self=self.__of__(parent) # ???? what madness is this?
+##        if binit:
+##            binit(self)
 
-class NoBrains: pass
+class SQLAlias(object):
+    # previously inherited ExtensionClass.Base
+    def __init__(self, name):
+        self._n=name
+    def __of__(self, parent):
+        return getattr(parent, self._n)
+
+class NoBrains:
+    pass
 
 
-def record_cls_factory (data, schema, aliases, parent, brains, zbrains):
+def record_cls_factory(data, fieldnames, schema, parent, brains, zbrains):
     """Return a custom 'record' class inheriting from Record, Implicit,
     brains, and zbrains).
+    
+    The namedtuple base class with look something like this:
+    
+    class TupleWithFieldnames(tuple):
+        'TupleWithFieldnames(foo, bar)' 
+
+        __slots__ = () 
+
+        _fields = ('foo', 'bar') 
+
+        def __new__(cls, foo, bar):
+            return tuple.__new__(cls, (foo, bar)) 
+
+        @classmethod
+        def _make(cls, iterable, new=tuple.__new__, len=len):
+            'Make a new TupleWithFieldnames object from a sequence or iterable'
+            result = new(cls, iterable)
+            if len(result) != 2:
+                raise TypeError('Expected 2 arguments, got %d' % len(result))
+            return result 
+
+        def __repr__(self):
+            return 'TupleWithFieldnames(foo=%r, bar=%r)' % self 
+
+        def _asdict(t):
+            'Return a new dict which maps field names to their values'
+            return {'foo': t[0], 'bar': t[1]} 
+
+        def _replace(self, **kwds):
+            'Return a new TupleWithFieldnames object replacing specified fields with new values'
+            result = self._make(map(kwds.pop, ('foo', 'bar'), self))
+            if kwds:
+                raise ValueError('Got unexpected field names: %r' % kwds.keys())
+            return result 
+
+        def __getnewargs__(self):
+            return tuple(self) 
+
+        foo = property(itemgetter(0))
+        bar = property(itemgetter(1))
+
     """
-    r = type('r', (Record, Implicit, brains, zbrains), {})
+    # to create a namedtuple, we need a space delimited list of names
+    fieldnames = ' '.join(fieldnames)
+    namedtuple_cls = namedtuple('TupleWithFieldnames', fieldnames) #, verbose=True)
+    bases = (namedtuple_cls, brains)
+    if zbrains is not brains:
+        bases += (zbrains,)
+    stubbase = type('stubclass', bases, {})
+    class BrainyRecord(stubbase):
+        __record_schema__ = schema #...why?
+        aliases = {}
 
-    # The Record class needs a __record_schema__ ...why?
-    r.__record_schema__=schema
+        def __new__(cls, data, parent=None, brains=None):
+            """Override the namedtuple __new__ method to handle expected
+            BrainyRecord API"""
+            self = tuple.__new__(cls, data) 
+            cls._parent = parent
+            if hasattr(brains, '__init__'):
+                binit=brains.__init__
+                if hasattr(binit,'im_func'):
+                    binit=binit.im_func
+                binit(self)
+            binit=brains.__init__
+            return self
 
-    # Every attribute in the Record class starting with '__' should
-    # take precedence over the same named attributes of the mixin.
-    for k in Record.__dict__.keys():
-        if k[:2]=='__':
-            setattr(r,k,getattr(Record,k))
+        def __of__(self, parent):
+            # hack...I don't know how to properly implement Aquisition
+            BrainyRecord._parent = parent
+            return self
 
-    # Add SQL Aliases
-    for k, v in aliases:
-        if not hasattr(r, k):
-            setattr(r, k, v)
+        @classmethod
+        def register_alias(cls, attr_name, alias_name):
+            cls.aliases[alias_name] = attr_name
+        
+        @classmethod
+        def register_lowercase_aliases(cls):
+            for name in cls._fields:
+                lowercase = name.lower()
+                if lowercase != name:
+                    cls.register_alias(name, lowercase)
 
-    # Use the init from the provided brains, if it has one;
-    # otherwise, create a default init which calls the
-    # Record base class __init__, and can accept params
-    # to allow additional custom initialization.
-    if hasattr(brains, '__init__'):
-        binit=brains.__init__
-        if hasattr(binit,'im_func'): binit=binit.im_func
-        def __init__(self, data, parent, binit=binit):
-            Record.__init__(self,data)
-            if parent is not None: self=self.__of__(parent)
-            binit(self)
+        @classmethod
+        def register_uppercase_aliases(cls):
+            for name in cls._fields:
+                uppercase = name.upper()
+                if uppercase != name:
+                    cls.register_alias(name, uppercase)
 
-        setattr(r, '__init__', __init__)
-    return r
+        def __get_item__(self, key):
+            try:
+                return namedtuple_cls[key]
+            except TypeError:
+                return self.get_item_by_name(key)
+
+        def get_item_by_name(self, key):
+            try:
+                return getattr(self, key)
+            except KeyError:
+                return get_item_by_alias (key)
+
+        def get_item_by_alias(self, key):
+            truename = self.aliases[key]
+            return getattr(self, truename)
+
+        def __getattr__(self, name):
+            truename = self.aliases.get(name, None)
+            if not truename:
+                raise AttributeError, "No attribute or alias found matching:" + name
+            return getattr(self, truename)
+
+        def as_dict (self):
+            return self._asdict()
+
+        def __setattr__ (self, name, value):
+            truename = self.aliases.get(name, name)
+            kwargs = {truename:value}
+            try:
+                self._replace(**kwargs)
+            except ValueError,e:
+                msg = str(e)
+                raise AttributeError(msg)
+
+        def __setitem__ (self, key, value):
+            truename = self.aliases.get(key, key)
+            kwargs = {truename:value}
+            self._replace(**kwargs)
+        
+        def __add__ (self, other):
+            raise TypeError, "Two Records cannot be added together."
+        
+        def __mul__ (self, other):
+            raise TypeError, "Two Records cannot be multiplied."
+        
+        def __delitem__ (self, index):
+            raise TypeError, "Record items cannot be deleted."
+        
+        @property
+        def aq_self (self):  #hack -- don't know how to implement Acquisition support
+            return self
+
+        @property
+        def aq_parent (self):  #hack -- don't know how to implement Acquisition support
+            return self._parent
+
+    BrainyRecord.register_uppercase_aliases()
+    BrainyRecord.register_lowercase_aliases()
+    return BrainyRecord
+
 
 
 class Results:
@@ -78,9 +207,10 @@ class Results:
         self._schema=schema={}
         self._data_dictionary=dd={}
         aliases=[]
-        if zbrains is None: zbrains=NoBrains
-        i=0
-        for item in items:
+        if zbrains is None:
+            zbrains=NoBrains
+
+        for i,item in enumerate(items):
             name=item['name']
             name=name.strip()
             if not name:
@@ -88,52 +218,45 @@ class Results:
             if schema.has_key(name):
                 raise ValueError, 'Duplicate column name, %s' % name
             schema[name]=i
-            n=name.lower()
-            if n != name: aliases.append((n, SQLAlias(name)))
-            n=name.upper()
-            if n != name: aliases.append((n, SQLAlias(name)))
             dd[name]=item
             names.append(name)
-            i=i+1
 
         self._nv=nv=len(names)
 
         # Create a record class to hold the records.
         names=tuple(names)
 
-        self._class = record_cls_factory (data, schema, aliases, parent, brains,
+        self._record_cls = record_cls_factory (data, names, schema, parent, brains,
                                           zbrains)
 
         # OK, we've read meta data, now get line indexes
 
-    def _searchable_result_columns(self): return self.__items__
-    def names(self): return self._names
-    def data_dictionary(self): return self._data_dictionary
+    def _searchable_result_columns(self):
+        return self.__items__
+    def names(self):
+        return self._names
+    def data_dictionary(self):
+        return self._data_dictionary
 
     def __len__(self): return len(self._data)
 
     def __getitem__(self,index):
         if index==self._index: return self._row
-        parent=self._parent
-        fields=self._class(self._data[index], parent)
-        if parent is not None: fields=fields.__of__(parent)
-        self._index=index
-        self._row=fields
-        return fields
+        parent = self._parent
+        rec = self._record_cls(self._data[index], parent)
+        if parent is not None: 
+            rec = rec.__of__(parent)
+        self._index = index
+        self._row = rec
+        return rec
 
     def tuples(self):
         return map(tuple, self)
 
     def dictionaries(self):
-        r=[]
-        a=r.append
-        names=self.names()
-        for row in self:
-            d={}
-            for n in names: d[n]=row[n]
-            a(d)
-
-        return r
+        """Return a list of dicts, one for each data record.
+        """
+        return [rec.as_dict() for rec in self]
 
     def asRDB(self): # Waaaaa
         r=[]
