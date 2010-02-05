@@ -710,8 +710,8 @@ class InClass:
 
         finally:
             if cache: pop()
-            pop()
-
+            pop() #pop the vars...right??
+        del(vars.items)  # just in case... vars must die!
         return result
 
     def sort_sequence(self, sequence, md):
