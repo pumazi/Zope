@@ -126,9 +126,9 @@ def record_cls_factory(data, fieldnames, schema, parent, brains, zbrains):
                 if uppercase != name:
                     cls.register_alias(name, uppercase)
 
-        def __get_item__(self, key):
+        def __getitem__(self, key):
             try:
-                return namedtuple_cls[key]
+                return namedtuple_cls.__getitem__(self,key)
             except TypeError:
                 return self.get_item_by_name(key)
 

@@ -70,6 +70,19 @@ class TestResults(unittest.TestCase):
         self.assertEqual(row.STRING, 'string2')
         self.assertEqual(row.INT, 2)
 
+    def test_getitem_by_name(self):
+        ob = self._makeOne((self.columns, self.data))
+        row = ob[0]
+        self.assertEqual(row['string'], 'string1')
+        self.assertEqual(row['int'], 1)
+        self.assertEqual(row['STRING'], 'string1')
+        self.assertEqual(row['INT'], 1)
+        row = ob[1]
+        self.assertEqual(row['string'], 'string2')
+        self.assertEqual(row['int'], 2)
+        self.assertEqual(row['STRING'], 'string2')
+        self.assertEqual(row['INT'], 2)
+
     def test_suppliedbrain(self):
         ob = self._makeOne((self.columns, self.data), brains=Brain)
         row = ob[0]
