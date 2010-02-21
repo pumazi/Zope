@@ -20,6 +20,9 @@ Features Added
 Bugs Fixed
 ++++++++++
 
+- If a traversal step returns the same object do not call before-publish hooks
+  again.
+
 - Protect ZCTextIndex's clear method against storing Acquisition wrappers.
 
 - LP #195761: fixed ZMI XML export / import and restored it to the UI.

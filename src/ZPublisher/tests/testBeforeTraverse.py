@@ -1,10 +1,12 @@
 import sys
 import logging
 
+from zope.interface import implements
 from Acquisition import Implicit
 from ZPublisher import BeforeTraverse
 from ZPublisher.BaseRequest import BaseRequest
 from ZPublisher.HTTPResponse import HTTPResponse
+from zope.publisher.interfaces import IPublishTraverse
 
 def makeBaseRequest(root):
     response = HTTPResponse()
@@ -132,6 +134,39 @@ def testBeforeTraverse(self):
 
     """
     pass
+
+class CountHook:
+    counter = 0
+    def __call__(self, obj, request):
+        self.counter += 1
+        
+
+class TraverseToSelfObject(Implicit):
+    implements(IPublishTraverse)
+    def publishTraverse(self, request, name):
+        return self
+
+def testNoMulitpleCalls(self):
+    """
+    Sometimes a traversal adapter is used which only modifies the
+    request, but does not do any real traversing. Skin traversal
+    adapters are a common example of this type of adapter. In this
+    case we do not want to call the before publish hooks for the
+    same object multiple times.
+
+    >>> root = DummyObjectBasic()
+    >>> request = makeBaseRequest(root)
+
+    >>> container = TraverseToSelfObject()
+    >>> root.container = container
+
+    >>> counter = CountHook()
+    >>> BeforeTraverse.registerBeforeTraverse(container, counter, 'count_hook')
+
+    >>> _ = request.traverse('container/traverser/obj')
+    >>> counter.counter
+    1
+    """
 
 from zope.testing import doctest
 

@@ -36,6 +36,12 @@ def quote(text):
     # quote url path segments, but leave + and @ intact
     return urllib_quote(text, '/+@')
 
+def _base(obj):
+    if IAcquirer.providedBy(obj):
+        return aq_base(obj)
+    return obj
+
+
 try:
     from ExtensionClass import Base
     from ZPublisher.Converters import type_converters
@@ -428,10 +434,12 @@ class BaseRequest:
         try:
             # We build parents in the wrong order, so we
             # need to make sure we reverse it when we're done.
+            same_object = False
             while 1:
-                bpth = getattr(object, '__before_publishing_traverse__', None)
-                if bpth is not None:
-                    bpth(object, self)
+                if not same_object:
+                    bpth = getattr(object, '__before_publishing_traverse__', None)
+                    if bpth is not None:
+                        bpth(object, self)
 
                 path = request.path = request['TraversalRequestNameStack']
                 # Check for method:
@@ -505,6 +513,7 @@ class BaseRequest:
                     self.roles = getRoles(
                         object, check_name, subobject,
                         self.roles)
+                    same_object =  _base(object) is _base(subobject)
                     object = subobject
                 except (KeyError, AttributeError):
                     if response.debug_mode:
