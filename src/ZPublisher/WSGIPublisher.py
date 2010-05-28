@@ -38,10 +38,14 @@ class WSGIResponse(HTTPResponse):
     
     Most significantly, streaming is not (yet) supported.
     """
-    _streaming = 0
+    _streaming = _chunking = 0
     _http_version = None
     _server_version = None
     _http_connection = None
+
+    # Set this value to 1 if streaming output in
+    # HTTP/1.1 should use chunked encoding
+    http_chunk = 0
     
     def __str__(self):
 
