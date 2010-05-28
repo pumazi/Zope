@@ -89,26 +89,28 @@ class WSGIResponse(HTTPResponse):
 
         # Close the connection if we have been asked to.
         # Use chunking if streaming output.
-        if self._http_version=='1.1':
-            if self._http_connection=='close':
-                self.setHeader('Connection','close')
+        if self._http_version == '1.1':
+            if self._http_connection == 'close':
+                self.setHeader('Connection', 'close')
             elif not self.headers.has_key('content-length'):
                 if self.http_chunk and self._streaming:
-                    self.setHeader('Transfer-Encoding','chunked')
-                    self._chunking=1
+                    self.setHeader('Transfer-Encoding', 'chunked')
+                    self._chunking = 1
                 else:
                     self.setHeader('Connection','close')
 
         for key, val in headers.items():
-            if key.lower()==key:
+            if key.lower() == key:
                 # only change non-literal header names
-                key="%s%s" % (key[:1].upper(), key[1:])
-                start=0
-                l=key.find('-',start)
+                key = "%s%s" % (key[:1].upper(), key[1:])
+                start = 0
+                l = key.find('-', start)
                 while l >= start:
-                    key="%s-%s%s" % (key[:l],key[l+1:l+2].upper(),key[l+2:])
-                    start=l+1
-                    l=key.find('-',start)
+                    key = "%s-%s%s" % (key[:l],
+                                       key[l+1:l+2].upper(),
+                                       key[l+2:])
+                    start = l + 1
+                    l = key.find('-',start)
             append("%s: %s" % (key, val))
 
         if self.cookies:
