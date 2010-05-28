@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2005 Zope Corporation and Contributors.
+# Copyright (c) 2005 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -31,7 +31,7 @@ def test_InitializeClass():
     >>> InitializeClass(C)
     """
 
-from zope.testing.doctest import DocTestSuite
+from doctest import DocTestSuite
 import unittest
 
 def test_suite():

@@ -1,6 +1,6 @@
 #############################################################################
 #
-# Copyright (c) 2001-2009 Zope Foundation and Contributors. All Rights Reserved.
+# Copyright (c) 2001 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.0 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -30,6 +30,8 @@ from ZPublisher import BadRequest
 from ZPublisher import InternalError
 from ZPublisher import NotFound
 from ZPublisher.BaseResponse import BaseResponse
+from ZPublisher.pubevents import PubBeforeStreaming
+from zope.event import notify
 
 nl2sp = maketrans('\n', ' ')
 
@@ -236,7 +238,7 @@ class HTTPResponse(BaseResponse):
         if lock:
              self._locked_status = 1
 
-    def setCookie(self, name, value, **kw):
+    def setCookie(self, name, value, quoted=True, **kw):
         """ Set an HTTP cookie.
 
         The response will include an HTTP header that sets a cookie on
@@ -257,6 +259,7 @@ class HTTPResponse(BaseResponse):
         for k, v in kw.items():
             cookie[k] = v
         cookie['value'] = value
+        cookie['quoted'] = quoted
 
     def appendCookie(self, name, value):
         """ Set an HTTP cookie.
@@ -834,7 +837,10 @@ class HTTPResponse(BaseResponse):
         b = v
         if isinstance(b, Exception):
             try:
-                b = str(b)
+                try:
+                    b = str(b)
+                except UnicodeEncodeError:
+                    b = self._encode_unicode(unicode(b))
             except:
                 b = '<unprintable %s object>' % type(b).__name__
 
@@ -880,7 +886,10 @@ class HTTPResponse(BaseResponse):
             # quoted cookie attr values, so only the value part
             # of name=value pairs may be quoted.
 
-            cookie = 'Set-Cookie: %s="%s"' % (name, quote(attrs['value']))
+            if attrs.get('quoted', True):
+                cookie = 'Set-Cookie: %s="%s"' % (name, quote(attrs['value']))
+            else:
+                cookie = 'Set-Cookie: %s=%s' % (name, quote(attrs['value']))
             for name, v in attrs.items():
                 name = name.lower()
                 if name == 'expires':
@@ -958,6 +967,9 @@ class HTTPResponse(BaseResponse):
 
         """
         if not self._wrote:
+            
+            notify(PubBeforeStreaming(self))
+            
             self.outputBody()
             self._wrote = 1
             self.stdout.flush()

@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -153,7 +153,8 @@ def publish(request, module_name, after_list, debug=0,
                 getattr(cl,'__name__',cl), val,
                 debug_mode and compact_traceback()[-1] or ''))
 
-        if err_hook is not None:
+        # debug is just used by tests (has nothing to do with debug_mode!)
+        if not debug and err_hook is not None:
             retry = False
             if parents:
                 parents=parents[0]
@@ -208,7 +209,7 @@ def publish(request, module_name, after_list, debug=0,
                         transactions_manager.abort()
             finally:
                 endInteraction()
-                notify(PubFailure(request, exc_info, retry))
+                notify(PubFailure(request, exc_info, False))
             raise
 
 def publish_module_standard(module_name,

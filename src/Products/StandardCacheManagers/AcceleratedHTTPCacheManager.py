@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -166,11 +166,15 @@ class AcceleratedHTTPCacheManager (CacheManager, SimpleItem):
         self._settings = {'anonymous_only':1,
                           'interval':3600,
                           'notify_urls':()}
-        self.__cacheid = '%s_%f' % (id(self), time.time())
+        self._resetCacheId()
 
     def getId(self):
         ' '
         return self.id
+
+    security.declarePrivate('_resetCacheId')
+    def _resetCacheId(self):
+        self.__cacheid = '%s_%f' % (id(self), time.time())
 
     security.declarePrivate('ZCacheManager_getCache')
     def ZCacheManager_getCache(self):

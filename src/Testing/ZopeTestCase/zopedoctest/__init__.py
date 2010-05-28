@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2005 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2005 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -15,7 +15,5 @@
 $Id$
 """
 
-from zope.testing.doctest import *
-from zope.testing.doctest import _normalize_module
+from doctest import *
 from functional import *
-

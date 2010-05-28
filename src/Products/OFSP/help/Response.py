@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -110,7 +110,7 @@ class Response:
 
         '''
 
-    def setCookie(name,value,**kw):
+    def setCookie(name, value, quoted=True, **kw):
         '''
 
         Set an HTTP cookie on the browser
@@ -119,6 +119,10 @@ class Response:
         cookie-enabled browsers with a key "name" and value
         "value". This overwrites any previously set value for the
         cookie in the Response object.
+
+        By default, the cookie value will be enclosed in double quotes.
+        To suppress the double quotes you can pass the "quoted" argument
+        with a False value such as False or 0.
 
         Permission -- Always available
 

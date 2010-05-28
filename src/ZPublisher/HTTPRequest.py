@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002-2009 Zope Corporation and Contributors.
+# Copyright (c) 2002-2009 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -477,6 +477,12 @@ class HTTPRequest(BaseRequest):
         form = self.form
         other = self.other
         taintedform = self.taintedform
+
+        # If 'QUERY_STRING' is not present in environ
+        # FieldStorage will try to get it from sys.argv[1]
+        # which is not what we need.
+        if not environ.has_key('QUERY_STRING'):
+            environ['QUERY_STRING'] = ''
 
         meth = None
         fs = ZopeFieldStorage(fp=fp,environ=environ,keep_blank_values=1)
@@ -1636,7 +1642,7 @@ parse_cookie_lock = allocate_lock()
 QPARMRE= re.compile(
         '([\x00- ]*([^\x00- ;,="]+)="([^"]*)"([\x00- ]*[;,])?[\x00- ]*)')
 PARMRE = re.compile(
-        '([\x00- ]*([^\x00- ;,="]+)=([^;,"]*)([\x00- ]*[;,])?[\x00- ]*)')
+        '([\x00- ]*([^\x00- ;,="]+)=([^;]*)([\x00- ]*[;,])?[\x00- ]*)')
 PARAMLESSRE = re.compile(
         '([\x00- ]*([^\x00- ;,="]+)[\x00- ]*[;,][\x00- ]*)')
 def parse_cookie(text,

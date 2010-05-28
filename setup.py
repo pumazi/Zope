@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2007 Zope Corporation and Contributors.
+# Copyright (c) 2007 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -11,19 +11,16 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Setup for the Acquisition egg package
-"""
+
 import os
 from setuptools import setup, find_packages, Extension
 
-EXTENSIONCLASS_INCLUDEDIRS = ['include', 'src']
-
-params = dict(name='Zope2',
-    version='2.12.2-dev',
+setup(name='Zope2',
+    version='2.12.7dev',
     url='http://www.zope.org',
     license='ZPL 2.1',
     description='Zope2 application server / web framework',
-    author='Zope Corporation and Contributors',
+    author='Zope Foundation and Contributors',
     author_email='zope-dev@zope.org',
     long_description=file("README.txt").read() + "\n" +
                      file(os.path.join("doc", "CHANGES.rst")).read(),
@@ -37,43 +34,17 @@ params = dict(name='Zope2',
       # AccessControl
       Extension(
             name='AccessControl.cAccessControl',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
+            include_dirs=['include', 'src'],
             sources=['src/AccessControl/cAccessControl.c'],
             depends=['include/ExtensionClass/ExtensionClass.h',
-                     'include/ExtensionClass/pickle/pickle.c',
                      'include/Acquisition/Acquisition.h']),
 
       # DocumentTemplate
       Extension(
             name='DocumentTemplate.cDocumentTemplate',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
-            sources=['src/DocumentTemplate/cDocumentTemplate.c']),
-
-      Extension(
-            name='MultiMapping._MultiMapping',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
-            sources=["src/MultiMapping/_MultiMapping.c"],
-            depends=["include/ExtensionClass/ExtensionClass.h"]),
-      Extension(
-            name='ThreadLock._ThreadLock',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
-            sources=["src/ThreadLock/_ThreadLock.c"],
-            depends=["include/ExtensionClass/ExtensionClass.h"]),
-      Extension(
-            name='Missing._Missing',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
-            sources=["src/Missing/_Missing.c"],
-            depends=["include/ExtensionClass/ExtensionClass.h"]),
-      Extension(
-            name='Record._Record',
-            include_dirs=EXTENSIONCLASS_INCLUDEDIRS,
-            sources=["src/Record/_Record.c"],
-            depends=["include/ExtensionClass/ExtensionClass.h"]),
-
-      # initgroups
-      Extension(
-            name='initgroups._initgroups',
-            sources=['src/initgroups/_initgroups.c']),
+            include_dirs=['include', 'src'],
+            sources=['src/DocumentTemplate/cDocumentTemplate.c'],
+            depends=['include/ExtensionClass/ExtensionClass.h']),
 
       # indexes
       Extension(
@@ -89,11 +60,18 @@ params = dict(name='Zope2',
       'Acquisition',
       'DateTime',
       'ExtensionClass',
+      'Missing',
+      'MultiMapping',
       'Persistence',
+      'Record',
       'RestrictedPython',
+      'ThreadLock',
       'ZConfig',
       'ZODB3',
+      'ZopeUndo',
       'docutils',
+      'five.formlib',
+      'initgroups',
       'pytz',
       'setuptools',
       'tempstorage',
@@ -108,19 +86,19 @@ params = dict(name='Zope2',
       'zope.deferredimport',
       'zope.event',
       'zope.exceptions',
-      'zope.formlib',
       'zope.i18n [zcml]',
       'zope.i18nmessageid',
       'zope.interface',
       'zope.lifecycleevent',
       'zope.location',
+      'zope.mkzeoinstance',
       'zope.pagetemplate',
       'zope.processlifetime',
       'zope.proxy',
       'zope.publisher',
       'zope.schema',
       'zope.security',
-      'zope.sendmail',
+      'zope.sendmail<3.7.0',
       'zope.sequencesort',
       'zope.site',
       'zope.size',
@@ -131,7 +109,6 @@ params = dict(name='Zope2',
       'zope.testing',
       'zope.traversing',
       'zope.viewlet',
-      'zope.app.form',
       'zope.app.publication',
       'zope.app.publisher',
       'zope.app.schema',
@@ -140,14 +117,12 @@ params = dict(name='Zope2',
     include_package_data=True,
     zip_safe=False,
     entry_points={
-       'console_scripts' : [
-          'mkzeoinstance=Zope2.utilities.mkzeoinstance:main',
+       'console_scripts': [
+          'mkzeoinstance=zope.mkzeoinstance:main',
           'mkzopeinstance=Zope2.utilities.mkzopeinstance:main',
           'runzope=Zope2.Startup.run:run',
           'zopectl=Zope2.Startup.zopectl:run',
           'zpasswd=Zope2.utilities.zpasswd:main',
-      ]
+      ],
     },
 )
-
-setup(**params)

@@ -6,38 +6,30 @@ works correctly in a VHM environment.
 Also see http://zope.org/Collectors/Zope/809
 
 Note: Tests require Zope >= 2.7
-
-$Id$
 """
-
-from Testing.makerequest import makerequest
-
-import Zope2
-Zope2.startup()
-
-import transaction
-
 import unittest
-
 
 class VHMRegressions(unittest.TestCase):
 
     def setUp(self):
+        import transaction
+        from Testing.makerequest import makerequest
+        from Testing.ZopeTestCase.ZopeLite import app
         transaction.begin()
-        self.app = makerequest(Zope2.app())
-        try:
-            if not hasattr(self.app, 'virtual_hosting'):
-                # If ZopeLite was imported, we have no default virtual host monster
-                from Products.SiteAccess.VirtualHostMonster import manage_addVirtualHostMonster
-                manage_addVirtualHostMonster(self.app, 'virtual_hosting')
-            self.app.manage_addFolder('folder')
-            self.app.folder.manage_addDTMLMethod('doc', '')
-            self.app.REQUEST.set('PARENTS', [self.app])
-            self.traverse = self.app.REQUEST.traverse
-        except:
-            self.tearDown()
+        self.app = makerequest(app())
+        if 'virtual_hosting' not in  self.app.objectIds():
+            # If ZopeLite was imported, we have no default virtual
+            # host monster
+            from Products.SiteAccess.VirtualHostMonster \
+                import manage_addVirtualHostMonster
+            manage_addVirtualHostMonster(self.app, 'virtual_hosting')
+        self.app.manage_addFolder('folder')
+        self.app.folder.manage_addDTMLMethod('doc', '')
+        self.app.REQUEST.set('PARENTS', [self.app])
+        self.traverse = self.app.REQUEST.traverse
 
     def tearDown(self):
+        import transaction
         transaction.abort()
         self.app._p_jar.close()
 
@@ -59,16 +51,53 @@ class VHMRegressions(unittest.TestCase):
         m = self.app.folder.doc.getPhysicalPath
         self.assertEqual(m(), ('', 'folder', 'doc'))
 
-    def test_actual_url(self):
-        self.app.folder.manage_addDTMLMethod('index_html', '')
-        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80/folder/VirtualHostRoot/doc/')
-        self.assertEqual(self.app.REQUEST['ACTUAL_URL'], 'http://www.mysite.com/doc/')
-        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80/folder/VirtualHostRoot/doc')
-        self.assertEqual(self.app.REQUEST['ACTUAL_URL'], 'http://www.mysite.com/doc')
-        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80/folder/VirtualHostRoot/')
-        self.assertEqual(self.app.REQUEST['ACTUAL_URL'], 'http://www.mysite.com/')
-        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80/folder/VirtualHostRoot')
-        self.assertEqual(self.app.REQUEST['ACTUAL_URL'], 'http://www.mysite.com/') 
+    def test_actual_url_no_VHR_no_doc_w_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                        'http://www.mysite.com/folder/')
+
+    def test_actual_url_no_VHR_no_doc_no_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                         'http://www.mysite.com/folder')
+
+    def test_actual_url_no_VHR_w_doc_w_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/doc/')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                        'http://www.mysite.com/folder/doc/')
+
+    def test_actual_url_no_VHR_w_doc_no_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/doc')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                         'http://www.mysite.com/folder/doc')
+
+    def test_actual_url_w_VHR_w_doc_w_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/VirtualHostRoot/doc/')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                        'http://www.mysite.com/doc/')
+
+    def test_actual_url_w_VHR_w_doc_no_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/VirtualHostRoot/doc')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                         'http://www.mysite.com/doc')
+
+    def test_actual_url_w_VHR_no_doc_w_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/VirtualHostRoot/')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                         'http://www.mysite.com/')
+
+    def test_actual_url_w_VHR_no_doc_no_trailing_slash(self):
+        ob = self.traverse('/VirtualHostBase/http/www.mysite.com:80'
+                           '/folder/VirtualHostRoot')
+        self.assertEqual(self.app.REQUEST['ACTUAL_URL'],
+                         'http://www.mysite.com/') 
 
 def gen_cases():
     for vbase, ubase in (
@@ -111,11 +140,66 @@ for i, (vaddr, vr, _vh, p, ubase) in enumerate(gen_cases()):
     setattr(VHMRegressions, 'testTraverse%s' % i, test)
 
 
+class VHMAddingTests(unittest.TestCase):
+
+    def setUp(self):
+        from OFS.Folder import Folder
+        super(VHMAddingTests, self).setUp()
+        self.root = Folder('root')
+
+    def _makeOne(self):
+        from Products.SiteAccess.VirtualHostMonster import VirtualHostMonster
+        return VirtualHostMonster()
+
+    def test_add_with_existing_vhm(self):
+        from Products.SiteAccess.VirtualHostMonster import \
+            manage_addVirtualHostMonster
+        from zExceptions import BadRequest
+        vhm1 = self._makeOne()
+        vhm1.manage_addToContainer(self.root)
+
+        vhm2 = self._makeOne()
+        self.assertRaises(BadRequest, vhm2.manage_addToContainer, self.root)
+        self.assertRaises( BadRequest
+                         , manage_addVirtualHostMonster
+                         , self.root
+                         )
+
+    def test_add_id_collision(self):
+        from OFS.Folder import Folder
+        from Products.SiteAccess.VirtualHostMonster import \
+            manage_addVirtualHostMonster
+        from zExceptions import BadRequest
+        self.root._setObject('VHM', Folder('VHM'))
+        vhm1 = self._makeOne()
+
+        self.assertRaises(BadRequest, vhm1.manage_addToContainer, self.root)
+        self.assertRaises( BadRequest
+                         , manage_addVirtualHostMonster
+                         , self.root
+                         )
+
+    def test_add_addToContainer(self):
+        from ZPublisher.BeforeTraverse import queryBeforeTraverse
+        vhm1 = self._makeOne()
+        vhm1.manage_addToContainer(self.root)
+
+        self.failUnless(vhm1.getId() in self.root.objectIds())
+        self.failUnless(queryBeforeTraverse(self.root, vhm1.meta_type))
+
+    def test_add_manage_addVirtualHostMonster(self):
+        from Products.SiteAccess.VirtualHostMonster import \
+            manage_addVirtualHostMonster
+        from Products.SiteAccess.VirtualHostMonster import VirtualHostMonster
+        from ZPublisher.BeforeTraverse import queryBeforeTraverse
+        manage_addVirtualHostMonster(self.root)
+
+        self.failUnless(VirtualHostMonster.id in self.root.objectIds())
+        hook = queryBeforeTraverse(self.root, VirtualHostMonster.meta_type)
+        self.failUnless(hook)
+
 def test_suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(VHMRegressions))
+    suite.addTest(unittest.makeSuite(VHMAddingTests))
     return suite
-
-if __name__ == '__main__':
-    unittest.main(defaultTest='test_suite')
-

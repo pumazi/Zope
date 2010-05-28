@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2004, 2005 Zope Corporation and Contributors.
+# Copyright (c) 2004, 2005 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -86,5 +86,5 @@ def test_zpt_i18n():
 
 def test_suite():
     from Testing.ZopeTestCase import FunctionalDocTestSuite
-    from zope.testing.doctest import ELLIPSIS
+    from doctest import ELLIPSIS
     return FunctionalDocTestSuite(optionflags=ELLIPSIS)

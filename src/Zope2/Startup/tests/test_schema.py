@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2003 Zope Corporation and Contributors.
+# Copyright (c) 2003 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -207,6 +207,19 @@ class StartupTestCase(unittest.TestCase):
             """)
         self.assertEqual(conf.databases[0].config.connection_class.__name__,
                          'LowConflictConnection')
+
+    def test_max_conflict_retries_default(self):
+        conf, handler = self.load_config_text("""\
+            instancehome <<INSTANCE_HOME>>
+            """)
+        self.assertEqual(conf.max_conflict_retries, 3)
+
+    def test_max_conflict_retries_explicit(self):
+        conf, handler = self.load_config_text("""\
+            instancehome <<INSTANCE_HOME>>
+            max-conflict-retries 15
+            """)
+        self.assertEqual(conf.max_conflict_retries, 15)
 
 def test_suite():
     return unittest.makeSuite(StartupTestCase)

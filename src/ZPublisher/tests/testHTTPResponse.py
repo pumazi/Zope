@@ -186,7 +186,7 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 1)
+        self.assertEqual(len(cookie), 2)
         self.assertEqual(cookie.get('value'), 'bar')
 
     def test_setCookie_w_existing(self):
@@ -194,12 +194,16 @@ class HTTPResponseTests(unittest.TestCase):
         response.setCookie('foo', 'bar')
         response.setCookie('foo', 'baz')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 1)
+        self.assertEqual(len(cookie), 2)
         self.assertEqual(cookie.get('value'), 'baz')
 
     def test_setCookie_no_attrs(self):
         response = self._makeOne()
         response.setCookie('foo', 'bar')
+        cookie = response.cookies.get('foo', None)
+        self.assertEqual(len(cookie), 2)
+        self.assertEqual(cookie.get('value'), 'bar')
+        self.assertEqual(cookie.get('quoted'), True)
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
         self.assertEqual(cookies[0], 'Set-Cookie: foo="bar"')
@@ -212,6 +216,7 @@ class HTTPResponseTests(unittest.TestCase):
         self.failUnless(cookie)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('expires'), EXPIRES)
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -222,9 +227,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', domain='example.com')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('domain'), 'example.com')
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -235,9 +241,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', path='/')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('path'), '/')
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -247,9 +254,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', comment='COMMENT')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('comment'), 'COMMENT')
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -259,9 +267,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', secure='SECURE')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('secure'), 'SECURE')
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -271,9 +280,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', secure='')
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('secure'), '')
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookies = response._cookie_list()
         self.assertEqual(len(cookies), 1)
@@ -283,9 +293,10 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', http_only=True)
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('http_only'), True)
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookie_list = response._cookie_list()
         self.assertEqual(len(cookie_list), 1)
@@ -295,13 +306,26 @@ class HTTPResponseTests(unittest.TestCase):
         response = self._makeOne()
         response.setCookie('foo', 'bar', http_only=False)
         cookie = response.cookies.get('foo', None)
-        self.assertEqual(len(cookie), 2)
+        self.assertEqual(len(cookie), 3)
         self.assertEqual(cookie.get('value'), 'bar')
         self.assertEqual(cookie.get('http_only'), False)
+        self.assertEqual(cookie.get('quoted'), True)
 
         cookie_list = response._cookie_list()
         self.assertEqual(len(cookie_list), 1)
         self.assertEqual(cookie_list[0], 'Set-Cookie: foo="bar"')
+
+    def test_setCookie_unquoted(self):
+        response = self._makeOne()
+        response.setCookie('foo', 'bar', quoted=False)
+        cookie = response.cookies.get('foo', None)
+        self.assertEqual(len(cookie), 2)
+        self.assertEqual(cookie.get('value'), 'bar')
+        self.assertEqual(cookie.get('quoted'), False)
+
+        cookie_list = response._cookie_list()
+        self.assertEqual(len(cookie_list), 1)
+        self.assertEqual(cookie_list[0], 'Set-Cookie: foo=bar')
 
     def test_appendCookie_w_existing(self):
         response = self._makeOne()

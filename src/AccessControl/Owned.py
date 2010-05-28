@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -157,23 +157,21 @@ class Owned(Base):
         If 'recursive' is true then also take ownership of all sub-objects,
         otherwise sub-objects retain their ownership information.
         """
-
-        new=ownerInfo(user)
-        if new is None: return # Special user!
+        new = ownerInfo(user)
+        if new is None: 
+            return # Special user!
         old = self.getOwnerTuple()
-        if not recursive:
-            if old==new: return
-            if old is UnownableOwner: return
 
-        for child in self.objectValues():
-            if recursive:
+        if not recursive:
+            if old == new or old is UnownableOwner:
+                return
+
+        if recursive:
+            for child in self.objectValues():
                 child.changeOwnership(user, 1)
-            else:
-                # make ownership explicit
-                child._owner=new
 
         if old is not UnownableOwner:
-            self._owner=new
+            self._owner = new
 
     def userCanTakeOwnership(self):
         security=getSecurityManager()

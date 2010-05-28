@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -20,12 +20,10 @@ item types.
 $Id$
 """
 
-import inspect
 import marshal
 import re
 import sys
 import time
-import warnings
 
 from AccessControl.SecurityInfo import ClassSecurityInfo
 from AccessControl.SecurityManagement import getSecurityManager
@@ -118,7 +116,7 @@ class Item(Base,
     # Alias id to __name__, which will make tracebacks a good bit nicer:
     __name__=ComputedAttribute(lambda self: self.getId())
 
-    # Name, relative to SOFTWARE_URL of icon used to display item
+    # Name, relative to BASEPATH1 of icon used to display item
     # in folder listings.
     icon=''
 
@@ -237,39 +235,6 @@ class Item(Base,
             if not REQUEST:
                 REQUEST = aq_acquire(self, 'REQUEST')
 
-            handle_errors = getattr(getattr(REQUEST, 'RESPONSE', None),
-                                    'handle_errors', False)
-            # Can we re-raise the exception with a rendered-to-HTML
-            # exception value? To be able to do so, the exception
-            # constructor needs to be able to take more than two
-            # arguments (some Zope 3 exceptions can't).
-            can_raise = False
-            ctor = getattr(error_type, '__init__', None)
-            if inspect.ismethoddescriptor(ctor):
-                # If it's a method descriptor, it means we've got a
-                # base ``__init__`` method that was not overriden,
-                # likely from the base ``Exception`` class.
-                can_raise = True
-            else:
-                if inspect.ismethod(ctor):
-                    ctor = getattr(ctor, 'im_func', None)
-                if inspect.isbuiltin(ctor):
-                    # In Python 2.4, the ``__init__`` method of the
-                    # base ``Exception`` class is a ``builtin
-                    # method``.
-                    can_raise = True
-                elif ctor is not None and inspect.isfunction(ctor):
-                    can_raise = (
-                        len(inspect.getargspec(error_type.__init__)[0]) > 2)
-
-            if not (can_raise and handle_errors):
-                # If we have been asked not to handle errors and we
-                # can't re-raise a transformed exception don't even
-                # bother with transforming the exception into
-                # HTML. Just re-raise the original exception right
-                # away.
-                raise error_type, error_value, tb
-
             try:
                 s = aq_acquire(client, 'standard_error_message')
 
@@ -295,7 +260,7 @@ class Item(Base,
                     exc_info=True
                     )
                 try:
-                    strv = str(error_value)
+                    strv = repr(error_value) # quotes tainted strings
                 except:
                     strv = ('<unprintable %s object>' % 
                             str(type(error_value).__name__))
@@ -306,12 +271,9 @@ class Item(Base,
                     html_quote(sys.exc_info()[1]),
                     ))
 
-            if handle_errors:
-                # If we've been asked to handle errors, just
-                # return the rendered exception and let the
-                # ZPublisher Exception Hook deal with it.
-                return error_type, v, tb
-            raise error_type, v, tb
+            # If we've been asked to handle errors, just return the rendered
+            # exception and let the ZPublisher Exception Hook deal with it.
+            return error_type, v, tb
         finally:
             if hasattr(self, '_v_eek'): del self._v_eek
             tb = None

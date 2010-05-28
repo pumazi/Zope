@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -253,7 +253,7 @@ class ZCTextIndex(Persistent, Implicit, SimpleItem):
             del self._v_lexicon
         except (AttributeError, KeyError):
             pass
-        self.index = self._index_factory(self.getLexicon())
+        self.index = self._index_factory(aq_base(self.getLexicon()))
 
     ## User Interface Methods ##
 
@@ -358,7 +358,7 @@ class PLexicon(Lexicon, Implicit, SimpleItem):
         """
         if words:
             wids = []
-            for word in words:
+            for word in self.parseTerms(words):
                 wids.extend(self.globToWordIds(word))
             words = [self.get_word(wid) for wid in wids]
         else:
@@ -384,16 +384,20 @@ class PLexicon(Lexicon, Implicit, SimpleItem):
             columns.append(words[i:i + rows])
             i += rows
 
-        return self._queryLexicon(self, REQUEST,
-                                  page=page,
-                                  rows=rows,
-                                  cols=cols,
-                                  start_word=start+1,
-                                  end_word=end,
-                                  word_count=word_count,
-                                  page_count=page_count,
-                                  page_range=xrange(page_count),
-                                  page_columns=columns)
+        info = dict(page=page,
+                    rows=rows,
+                    cols=cols,
+                    start_word=start+1,
+                    end_word=end,
+                    word_count=word_count,
+                    page_count=page_count,
+                    page_range=xrange(page_count),
+                    page_columns=columns)
+
+        if REQUEST is not None:
+            return self._queryLexicon(self, REQUEST, **info)
+
+        return info
 
     security.declareProtected(LexiconMgmtPerm, 'manage_main')
     manage_main = DTMLFile('dtml/manageLexicon', globals())

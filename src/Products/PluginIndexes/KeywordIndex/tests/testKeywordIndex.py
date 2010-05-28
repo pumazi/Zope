@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -242,6 +242,31 @@ class TestKeywordIndex( unittest.TestCase ):
                           , 'operator' : 'and'}
                  }
         self._checkApply(record, values[5:7])
+
+    def test_noindexing_when_noattribute(self):
+        to_index = Dummy(['hello'])
+        self._index._index_object(10, to_index, attr='UNKNOWN')
+        self.failIf(self._index._unindex.get(10))
+        self.failIf(self._index.getEntryForObject(10))
+
+    def test_noindexing_when_raising_attribute(self):
+        class FauxObject:
+            def foo(self):
+                raise AttributeError
+        to_index = FauxObject()
+        self._index._index_object(10, to_index, attr='foo')
+        self.failIf(self._index._unindex.get(10))
+        self.failIf(self._index.getEntryForObject(10))
+
+    def test_value_removes(self):
+        
+        to_index = Dummy(['hello'])
+        self._index._index_object(10, to_index, attr='foo')
+        self.failUnless(self._index._unindex.get(10))
+
+        to_index = Dummy('')
+        self._index._index_object(10, to_index, attr='foo')
+        self.failIf(self._index._unindex.get(10))
 
 
 def test_suite():

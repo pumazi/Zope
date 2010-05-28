@@ -10,16 +10,12 @@ them to a different Zope installation. You can either choose
 to download the export file to your local machine, or save it
 in the &quot;var&quot; directory of your Zope installation 
 on the server. 
-<!--
 <br/>
 <br/>
 <b>Note:</b>
-Zope can export/import objects in two dfferent formats: a binary format (called
+Zope can export/import objects in two different formats: a binary format (called
 ZEXP) and as XML. The ZEXP format is the officially supported export/import
 format for moving data between <u>identical</u> Zope installations (it is not a migration tool).
-The XML export/import is unsupported (and possibly broken under certain circumstances) - use it
-at your own risk.
--->
 </p>
 
 <form action="manage_exportObject" method="post">
@@ -42,26 +38,32 @@ at your own risk.
   </td>
   <td align="left" valign="top">
   <div class="form-text">
-  <input type="radio" name="download:int" value="1" />
+  <label for="download_local">
+  <input type="radio" name="download:int" value="1" id="download_local" />
   Download to local machine
+  </label>
   <br />
-  <input type="radio" name="download:int" value="0" checked />
+  <label for="download_server">
+  <input type="radio" name="download:int" value="0" id="download_server" checked />
   Save to file on server
+  </label>
   </div>
   </td>
 </tr>  
-<!--
 <tr>
   <td align="left" valign="top">
   &nbsp;
   </td>
   <td align="left" valign="top">
   <div class="form-text">
-  <input type="checkbox" name="toxml" value="Y" /> XML format? (unsupported, see above)
+  <label for="toxml">
+  <input type="checkbox" id="toxml" name="toxml" value="Y" />
+  XML format?
+  </label>
+  <em>(unsupported, see above)</em>
   </div>
   </td>
 </tr>
--->
 <tr>
   <td></td>
   <td align="left" valign="top">
@@ -115,11 +117,15 @@ ownership information".
   </td>
   <td align="left" valign="top">
   <div class="form-text">
-  <input type="radio" name="set_owner:int" value="1" checked />
+  <label for="owner_take">
+  <input type="radio" name="set_owner:int" value="1" id="owner_take" checked />
   Take ownership of imported objects
+  </label>
   <br />
-  <input type="radio" name="set_owner:int" value="0" /> 
+  <label for="owner_retain">
+  <input type="radio" name="set_owner:int" value="0" id="owner_retain" /> 
   Retain existing ownership information
+  </label>
   </div>
   </td>
 </tr>
@@ -136,10 +142,3 @@ ownership information".
 
 
 <dtml-var manage_page_footer>
-
-
-
-
-
-
-

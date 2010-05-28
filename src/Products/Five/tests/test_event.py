@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2004, 2005 Zope Corporation and Contributors.
+# Copyright (c) 2004, 2005 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -83,6 +83,6 @@ class MyNewFolder(DontComplain, Folder):
 
 
 def test_suite():
-    from zope.testing.doctest import DocFileSuite
+    from doctest import DocFileSuite
     return DocFileSuite('event.txt', package="Products.Five.tests",
                         setUp=setUp, tearDown=testing.tearDown)

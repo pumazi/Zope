@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -110,6 +110,14 @@ This is the message body."""
         self.failUnlessEqual(resto, ['many@example.com'])
         self.failUnlessEqual(resfrom, 'me@example.com' )
 
+    def test__getThreadKey_uses_fspath(self):
+        mh1 = self._makeOne('mh1')
+        mh1.smtp_queue_directory = '/abc'
+        mh1.absolute_url = lambda self: 'http://example.com/mh1'
+        mh2 = self._makeOne('mh2')
+        mh2.smtp_queue_directory = '/abc'
+        mh2.absolute_url = lambda self: 'http://example.com/mh2'
+        self.assertEqual(mh1._getThreadKey(), mh2._getThreadKey())
 
     def testAddressParser( self ):
         msg = """To: "Name, Nick" <recipient@domain.com>, "Foo Bar" <foo@domain.com>
@@ -517,6 +525,92 @@ A M\xc3\xa9ssage""")
                                        mfrom='sender@domain.com',
                                        statusTemplate='check_status')
         self.failUnlessEqual(result, 'Message Sent')
+
+    def testSendMultiPartAlternativeMessage(self):
+        msg = ("""\
+Content-Type: multipart/alternative; boundary="===============0490954888=="
+MIME-Version: 1.0
+Date: Sun, 27 Aug 2006 17:00:00 +0200
+Subject: My multipart email
+To: Foo Bar <foo@domain.com>
+From: sender@domain.com
+
+--===============0490954888==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+This is plain text.
+--===============0490954888==
+Content-Type: text/html; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+<p>This is html.</p>
+--===============0490954888==--
+""")
+
+        mailhost = self._makeOne('MailHost')
+        # Specifying a charset for the header may have unwanted side
+        # effects in the case of multipart mails.
+        # (TypeError: expected string or buffer)
+        mailhost.send(msg, charset='utf-8')
+        self.assertEqual(mailhost.sent, msg)
+
+    def testSendMultiPartMixedMessage(self):
+        msg = ("""\
+Content-Type: multipart/mixed; boundary="XOIedfhf+7KOe/yw"
+Content-Disposition: inline
+MIME-Version: 1.0
+Date: Sun, 27 Aug 2006 17:00:00 +0200
+Subject: My multipart email
+To: Foo Bar <foo@domain.com>
+From: sender@domain.com
+
+--XOIedfhf+7KOe/yw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+This is a test with as attachment OFS/www/new.gif.
+
+--XOIedfhf+7KOe/yw
+Content-Type: image/gif
+Content-Disposition: attachment; filename="new.gif"
+Content-Transfer-Encoding: base64
+
+R0lGODlhCwAQAPcAAP8A/wAAAFBQUICAgMDAwP8AAIAAQAAAoABAgIAAgEAAQP//AP//gACA
+gECAgP///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAAALAAAAAALABAAAAg7AAEIFKhgoEGC
+CwoeRKhwoYKEBhVIfLgg4UQAFCtqbJixYkOEHg9SHDmQJEmMEBkS/IiR5cKXMGPKDAgAOw==
+
+--XOIedfhf+7KOe/yw
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: attachment; filename="test.txt"
+Content-Transfer-Encoding: quoted-printable
+
+D=EDt =EFs =E9=E9n test
+
+--XOIedfhf+7KOe/yw--
+""")
+
+        mailhost = self._makeOne('MailHost')
+        # Specifying a charset for the header may have unwanted side
+        # effects in the case of multipart mails.
+        # (TypeError: expected string or buffer)
+        mailhost.send(msg, charset='utf-8')
+        self.assertEqual(mailhost.sent, msg)
 
 
 def test_suite():

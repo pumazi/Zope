@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -10,19 +10,16 @@
 # FOR A PARTICULAR PURPOSE
 #
 ##############################################################################
+""" Session initialization routines
 """
-Session initialization routines
-
-$Id$
-"""
-
-import ZODB # this is for testrunner to be happy
-import BrowserIdManager
-import SessionDataManager
-from BrowserIdManager import BrowserIdManagerErr
-from SessionDataManager import SessionDataManagerErr
+from Products.Sessions.interfaces import BrowserIdManagerErr    #BBB
+from Products.Sessions.interfaces import SessionDataManagerErr  #BBB
 
 def initialize(context):
+
+    import BrowserIdManager
+    import SessionDataManager
+
     context.registerClass(
         BrowserIdManager.BrowserIdManager,
         icon="www/idmgr.gif",
@@ -41,6 +38,7 @@ def initialize(context):
 
     context.registerHelp()
     context.registerHelpTitle("Zope Help")
+
     # do module security declarations so folks can use some of the
     # module-level stuff in PythonScripts
     #
@@ -51,8 +49,15 @@ def initialize(context):
     security = ModuleSecurityInfo('Products')
     security.declarePublic('Sessions')
     security.declarePublic('Transience')
+
+    security = ModuleSecurityInfo('Products.Sessions.interfaces')
+    security.declareObjectPublic()
+    security.setDefaultAccess('allow')
+
+    security = ModuleSecurityInfo('Products.Transience')
+    security.declarePublic('MaxTransientObjectsExceeded')
+
+    #BBB for names which should be imported from Products.Sessions.interfaces
     security = ModuleSecurityInfo('Products.Sessions')
     security.declarePublic('BrowserIdManagerErr')
     security.declarePublic('SessionDataManagerErr')
-    security = ModuleSecurityInfo('Products.Transience')
-    security.declarePublic('MaxTransientObjectsExceeded')

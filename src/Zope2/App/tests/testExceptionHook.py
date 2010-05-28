@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2007 Zope Corporation and Contributors.
+# Copyright (c) 2007 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -16,6 +16,7 @@ import sys
 import unittest
 import logging
 
+import Acquisition
 from zope.component.testing import PlacelessSetup
 from zope.interface.common.interfaces import IException
 from zope.publisher.skinnable import setDefaultSkin
@@ -215,7 +216,7 @@ class ExceptionHookTest(ExceptionHookTestCase):
         self.call_no_exc(hook, None, None, f)
         self.assertEquals(hook.unresolved_conflict_errors, 2)
 
-class Client:
+class Client(Acquisition.Explicit):
 
     def __init__(self):
         self.standard_error_message = True
@@ -320,14 +321,16 @@ class ExceptionMessageRenderTest(ExceptionHookTestCase):
         tb = client.messages[0]
         self.failUnless("ConflictError: database conflict error" in tb, tb)
 
-class CustomExceptionView:
+class CustomExceptionView(Acquisition.Explicit):
 
     def __init__(self, context, request):
         self.context = context
         self.request = request
 
     def __call__(self):
-        return "Exception View: %s" % self.context.__class__.__name__
+        return "Exception View: %s\nContext: %s" % (
+                self.context.__class__.__name__,
+                Acquisition.aq_parent(self).__class__.__name__)
 
 def registerExceptionView(for_):
     from zope.interface import Interface
@@ -344,7 +347,6 @@ def registerExceptionView(for_):
 class ExceptionViewsTest(PlacelessSetup, ExceptionHookTestCase):
 
     def testCustomExceptionViewUnauthorized(self):
-        from ZPublisher.HTTPResponse import HTTPResponse
         from AccessControl import Unauthorized
         registerExceptionView(IUnauthorized)
         def f():
@@ -352,9 +354,9 @@ class ExceptionViewsTest(PlacelessSetup, ExceptionHookTestCase):
         request = self._makeRequest()
         client = StandardClient()
         v = self.call_exc_value(client, request, f)
-        self.failUnless(isinstance(v, HTTPResponse), v)
-        self.failUnless(v.status == 401, (v.status, 401))
+        self.failUnless(isinstance(v, Unauthorized), v)
         self.failUnless("Exception View: Unauthorized" in str(v))
+        self.failUnless("Context: StandardClient" in str(v))
 
     def testCustomExceptionViewForbidden(self):
         from ZPublisher.HTTPResponse import HTTPResponse

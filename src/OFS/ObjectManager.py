@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -617,7 +617,6 @@ class ObjectManager(CopyContainer,
         if dirname:
             raise BadRequest, 'Invalid file name %s' % escape(file)
 
-        cfg = getConfiguration()
         for impath in self._getImportPaths():
             filepath = os.path.join(impath, 'import', file)
             if os.path.exists(filepath):
@@ -663,6 +662,8 @@ class ObjectManager(CopyContainer,
             paths.append(zopehome)
         if not cfg.instancehome in paths:
             paths.append(cfg.instancehome)
+        if not cfg.clienthome in paths:
+            paths.append(cfg.clienthome)
         return paths
 
     def list_imports(self):

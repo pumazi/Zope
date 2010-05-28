@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -245,8 +245,8 @@ def upload_html(object, f):
             body = ("<!--#var standard_html_header-->\n\n" +
                     body + "\n\n<!--#var standard_html_footer-->")
         else:
-            body = ("<html><head><title><dtml-var title_or_id></title>
-                     </head><body bgcolor="#FFFFFF">\n\n" +
+            body = ("<html><head><title><dtml-var title_or_id></title>"
+                    "</head><body bgcolor=\"#FFFFFF\">\n\n" +
                      body + "\n\n</body></html>")
 
     else:

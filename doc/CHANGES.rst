@@ -2,11 +2,269 @@ Changelog
 =========
 
 This file contains change information for the current Zope release.
-Change information for previous versions of Zope can be found in the
-file HISTORY.txt.
+Change information for previous versions of Zope can be found at
+http://docs.zope.org/zope2/releases/.
 
-Zope 2.12.2 (unreleased)
-------------------------
+2.12.7 (unreleased)
+-------------------
+
+Bugs Fixed
+++++++++++
+
+- Five's processInputs() would stomp on :list or :tuple values that contained
+  ints or other non-strings, would clear out :records entirely, and would not
+  do anything for :record fields.
+
+- LP #143261: The (very old-fashioned) Zope2.debug interactive request
+  debugger still referred to the toplevel module ``Zope``, which was 
+  renamed to ``Zope2`` a long time ago.
+
+- LP #142874: Naming objects ``URL`` or ``URL1`` broke several ZMI
+  views.
+
+- LP #142878: Remove URL-based suppression of access rules and site root
+  objects.   Suppression using ``os.environ`` still works.
+
+- LP #143144: Fix documentation for the zope.conf ``mount-point``
+  directive.
+
+- LP #142410: Do not index documents in a KeywordIndex if the document
+  is missing the indexed attribute, if determining the value raises
+  AttributeError, or of the indexed attribute is empty.
+
+- LP #142590: The ``DTMLMethod`` and ``DTMLDocument`` ``manage_edit``
+  methods could not deal with ``TaintedString`` instances. Removed the
+  entirely redundant ``DTMLDocument.manage_edit`` method at the same time.
+
+- LP #142451: If non-recursive ownership changes are made using 
+  ``changeOwnership``, do not touch any children.
+
+- LP #142750 and LP #142481: To prevent confusion when choosing an Id and
+  to avoid issues when creating two VirtualHostMonsters in the same 
+  container the VirtualHostMoster now has a default Id. It can no longer
+  be selected, and the intermediary Add view is gone.
+
+Features Added
+++++++++++++++
+
+- Update Five's testbrowser to support both mechanize 0.1.x and 0.2.x.
+
+- LP #142226: Added an extra keyword argument to the HTTPResponse
+  setCookie method to suppress enclosing the cookie value field
+  in double quotes.
+
+2.12.6 (2010-05-17)
+-------------------
+
+Restructuring
++++++++++++++
+
+- Removed Zope2's own mkzeoinstance script in favor of the version from the
+  new zope.mkzeoinstance package.
+
+Features Added
+++++++++++++++
+
+- Updated packages:
+
+  - DateTime = 2.12.2
+  - distribute = 0.6.12
+  - ExtensionClass = 2.13.1
+  - initgroups = 2.13.0
+  - Missing = 2.13.0
+  - MultiMapping = 2.13.0
+  - Persistence = 2.13.1
+  - pytz = 2010h
+  - Record = 2.13.0
+  - RestrictedPython = 3.5.2
+  - ThreadLock = 2.13.0
+  - ZODB3 = 3.9.5
+  - zope.authentication = 3.7.1
+  - zope.browser = 1.3
+  - zope.cachedescriptors = 3.5.1
+  - zope.deferredimport = 3.5.1
+  - zope.i18n = 3.7.3
+  - zope.i18nmessageid = 3.5.2
+  - zope.lifecycleevent = 3.6.1
+  - zope.pagetemplate = 3.5.1
+  - zope.proxy = 3.6.0
+  - zope.security = 3.7.3
+
+Bugs Fixed
+++++++++++
+
+- LP #142563:  Fix ``AccessControl.User.NullUnrestrictedUserTests.__str__``.
+
+- Fix several template errors in SiteErrorLog (chameleon compatibility).
+
+- LP #267820:  Fix bad except clause in the ``sequence_sort`` method of
+  the ``<dtml-in>`` tag.
+
+- LP #351006:  Don't nest block tags inside HTML ``<p>`` tags in
+  ``zExceptions.ExceptionFormatter``.
+
+- LP #411837:  Handle resource files with ``.htm`` extension properly,
+  as page template resources.
+
+- LP #435728:  Fix indentation of OFSP/help/sequence.py docstring.
+
+- LP #574286:  Ensure that mailhosts which share a queue directory do not
+  double-deliver mails, by sharing the thread which processes emails for
+  that directory.
+
+- BaseRequest: Fixed handling of errors in 'traverseName'.
+
+2.12.5 (2010-04-24)
+-------------------
+
+Features Added
+++++++++++++++
+
+- Updated packages:
+
+  - Acquisition = 2.13.3
+  - distribute = 0.6.10
+  - roman = 1.4.0
+  - zope.annotation = 3.5.0
+  - zope.app.cache = 3.6.0
+  - zope.app.dav = 3.5.1
+  - zope.app.i18n = 3.6.1
+  - zope.app.localpermission = 3.7.2
+  - zope.app.principalannotation = 3.7.0
+  - zope.app.publication = 3.8.1
+  - zope.app.publisher = 3.8.4
+  - zope.app.renderer = 3.5.1
+  - zope.app.security = 3.7.3
+  - zope.app.session = 3.6.1
+  - zope.app.testing = 3.7.3
+  - zope.app.wsgi = 3.6.0
+  - zope.app.zapi = 3.4.1
+  - zope.broken = 3.6.0
+  - zope.catalog = 3.8.1
+  - zope.formlib = 3.7.0
+  - zope.i18nmessageid = 3.5.1
+  - zope.index = 3.6.0
+  - zope.keyreference = 3.6.2
+  - zope.lifecycleevent = 3.6.0
+  - zope.location = 3.6.0
+  - zope.minmax = 1.1.2
+  - zope.securitypolicy = 3.6.1
+  - zope.viewlet = 3.6.1
+
+- Downgrade the ``manage_* is discouraged. You should use event subscribers
+  instead`` warnings to debug level logging. This particular warning hasn't
+  motivated anyone to actually change any code.
+
+- Use the standard libraries doctest module in favor of the deprecated version
+  in zope.testing.
+
+- LP #143013: make the maximum number of retries on ConflictError a
+  configuration option.
+
+Bugs Fixed
+++++++++++
+
+- HTTPResponse: Fixed handling of exceptions with unicode values.
+
+- zExceptions: Fixed some unicode issues in Unauthorized.
+
+- LP #372632, comments #15ff.: Fixed regression in Unauthorized handling.
+
+- LP #563229:  Process "evil" JSON cookies which contain double quotes in
+  violation of RFC 2965 / 2616.
+
+- Document ``Products.PluginIndexes.PathIndex.PathIndex.insertEntry`` as
+  an API for use by subclasses.
+
+- Fixed regression introduced in the resource directory fix in 2.12.4.
+
+- LP #143655:  don't prevent sorting using a path index.
+
+- LP #142478:  normalize terms passed to ``PLexicon.queryLexicon`` using
+  the lexicon's pipeline (e.g., case flattening, stop word removal, etc.)
+
+- Wrap exception views in the context of the published object.
+
+2.12.4 (2010-04-05)
+-------------------
+
+Restructuring
++++++++++++++
+
+- Removed unmaintained build scripts for full Windows installers and
+  ``configure / make`` type builds.
+
+- Updated copyright and license information to conform with repository policy.
+
+- Factored out ZopeUndo package into a separate distribution.
+
+Features Added
+++++++++++++++
+
+- Updated packages:
+
+  - Acquisition = 2.13.2
+  - ExtensionClass = 2.13.0
+  - Persistence = 2.13.0
+  - pytz = 2010b
+
+- There is now an event ZPublisher.interfaces.IPubBeforeStreaming which will
+  be fired just before the first chunk of data is written to the response
+  stream when using the write() method on the response. This is the last
+  possible point at which response headers may be set in this case.
+
+Bugs Fixed
+++++++++++
+
+- LP #142430: Avoid using the contexts title_or_id method in the
+  standard_error_message.
+
+- LP #257675: request.form contained '-C':'' when no QUERY_STRING was in
+  the environment.
+
+- Zope 3-style resource directories would throw an Unauthorized error when
+  trying to use restrictedTraverse() to reach a resource in a sub-directory
+  of the resource directory.
+
+- Restore ability to traverse to 'macros' on template-based browser views.
+
+- Protect ZCTextIndex's clear method against storing Acquisition wrappers.
+
+- LP #195761: fixed ZMI XML export / import and restored it to the UI.
+
+- MailHost should fall back to HELO when EHLO fails.
+
+2.12.3 (2010-01-12)
+-------------------
+
+Bugs Fixed
+++++++++++
+
+- LP #491224: proper escaping of rendered error message
+
+- LP #246983: Enabled unicode conflict resolution on variables inside "string:"
+  expressions in TALES.
+
+- Fixed possible TypeError while sending multipart emails.
+
+- Also look for ZEXP imports within the clienthome directory. This
+  provides a place to put imports that won't be clobbered by buildout
+  in a buildout-based Zope instance.
+
+- Fixed a SyntaxError in utilities/load_site.py script.
+
+Features Added
+++++++++++++++
+
+- Made OFS.Image.File and OFS.Image.Image send IObjectModifiedEvent when
+  created through their factories and modified through the ZMI forms
+  (manage_edit() and manage_upload()).
+
+- Moved zope.formlib / zope.app.form integration into a separate package
+  called five.formlib.
+
+2.12.2 (2009-12-22)
+-------------------
 
 Features Added
 ++++++++++++++
@@ -43,7 +301,10 @@ Features Added
 Bugs Fixed
 ++++++++++
 
-- LP #496961:  Remove all mention of ``standard_html_header`` and
+- LP #143444: add labels to checkboxes / radio buttons on import /
+  export form.
+
+- LP #496941:  Remove all mention of ``standard_html_header`` and
   ``standard_html_footer`` from default DTML content.
 
 - Fixed a regression in Products.PageTemplates that meant filesystem templates
@@ -59,9 +320,8 @@ Bugs Fixed
 - Avoid possible errors on test tear-down in Products.Five.fiveconfigure's
   cleanUp() function if Products.meta_types has not been set
 
-
-Zope 2.12.1 (2009/11/02)
-------------------------
+2.12.1 (2009-11-02)
+-------------------
 
 Features Added
 ++++++++++++++
@@ -90,8 +350,8 @@ Bugs Fixed
 
 - LP #453723: zopectl start works again on non-Windows platforms.
 
-Zope 2.12.0 final  (2009/10/01)
--------------------------------
+2.12.0 (2009-10-01)
+-------------------
 
 Features Added
 ++++++++++++++
@@ -114,8 +374,8 @@ Bugs Fixed
 - LP #414757 (backported from Zope trunk): don't emit a IEndRequestEvent when
   clearing a cloned request.
 
-Zope 2.12.0 c1 (2009/09/04)
----------------------------
+2.12.0c1 (2009-09-04)
+---------------------
 
 Features Added
 ++++++++++++++
@@ -140,9 +400,8 @@ Bugs Fixed
 - Made the version information show up again, based on pkg_resources
   distribution information instead of the no longer existing version.txt.
 
-
-Zope 2.12.0 b4 (2008/08/06)
----------------------------------
+2.12.0b4 (2008-08-06)
+---------------------
 
 Features Added
 ++++++++++++++
@@ -176,9 +435,8 @@ Bugs Fixed
 - MailHost manage form no longer interprets the value None as a string
   in user and password fields.
 
-
-Zope 2.12.0 b3 (2009/07/15)
----------------------------
+2.12.0b3 (2009-07-15)
+---------------------
 
 Features Added
 ++++++++++++++
@@ -227,8 +485,8 @@ Bugs Fixed
 
 - Correctly handle exceptions in the ZPublisherExceptionHook.
 
-Zope 2.12.0 b2 (2009/05/27)
----------------------------
+2.12.0b2 (2009-05-27)
+---------------------
 
 Restructuring
 +++++++++++++
@@ -323,8 +581,8 @@ Bugs Fixed
   Fixes https://bugs.launchpad.net/zope2/+bug/372629 , which prevented
   viewing the "Try" tab of a script with no parameters.
 
-Zope 2.12.0b1 (2009/05/06)
---------------------------
+2.12.0b1 (2009-05-06)
+---------------------
 
 Restructuring
 +++++++++++++

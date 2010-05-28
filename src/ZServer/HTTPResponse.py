@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -26,18 +26,19 @@ import time
 
 from ZPublisher.HTTPResponse import HTTPResponse # WTF?
 from ZPublisher.Iterators import IStreamIterator # WTF?
+from ZPublisher.pubevents import PubBeforeStreaming # WTF?
+from zope.event import notify
 
-from ZServer.medusa.http_date import build_http_date
-from ZServer.PubCore.ZEvent import Wakeup
-from ZServer.medusa import http_server
-
-from ZServer.Producers import ShutdownProducer
-from ZServer.Producers import LoggingProducer
-from ZServer.Producers import CallbackProducer
-from ZServer.Producers import file_part_producer
-from ZServer.Producers import file_close_producer
-from ZServer.Producers import iterator_producer
 from ZServer.DebugLogger import log
+from ZServer.medusa import http_server
+from ZServer.medusa.http_date import build_http_date
+from ZServer.Producers import CallbackProducer
+from ZServer.Producers import file_close_producer
+from ZServer.Producers import file_part_producer
+from ZServer.Producers import iterator_producer
+from ZServer.Producers import LoggingProducer
+from ZServer.Producers import ShutdownProducer
+from ZServer.PubCore.ZEvent import Wakeup
 
 
 class ZServerHTTPResponse(HTTPResponse):
@@ -170,6 +171,7 @@ class ZServerHTTPResponse(HTTPResponse):
         stdout = self.stdout
 
         if not self._wrote:
+            notify(PubBeforeStreaming(self))
             l = self.headers.get('content-length', None)
             if l is not None:
                 try:

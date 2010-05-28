@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -15,6 +15,7 @@
 $Id$
 """
 import logging
+from os.path import realpath
 import re
 from cStringIO import StringIO
 from copy import deepcopy
@@ -266,32 +267,38 @@ class MailBase(Implicit, Item, RoleManager):
                           force_tls=self.force_tls
                          )
 
+    security.declarePrivate('_getThreadKey')
+    def _getThreadKey(self):
+        """ Return the key used to find our processor thread.
+        """
+        return realpath(self.smtp_queue_directory)
+
     @synchronized(lock)
     def _stopQueueProcessorThread(self):
-        """ Stop thread for processing the mail queue """
-
-        path = self.absolute_url(1)
-        if queue_threads.has_key(path):
-            thread = queue_threads[path]
+        """ Stop thread for processing the mail queue.
+        """
+        key = self._getThreadKey()
+        if queue_threads.has_key(key):
+            thread = queue_threads[key]
             thread.stop()
             while thread.isAlive():
                 # wait until thread is really dead
                 time.sleep(0.3)
             del queue_threads[path]
-            LOG.info('Thread for %s stopped' % path)
+            LOG.info('Thread for %s stopped' % key)
 
     @synchronized(lock)
     def _startQueueProcessorThread(self):
-        """ Start thread for processing the mail queue """
-
-        path = self.absolute_url(1)
-        if not queue_threads.has_key(path):
+        """ Start thread for processing the mail queue.
+        """
+        key = self._getThreadKey()
+        if not queue_threads.has_key(key):
             thread = QueueProcessorThread()
             thread.setMailer(self._makeMailer())
             thread.setQueuePath(self.smtp_queue_directory)
             thread.start()
-            queue_threads[path] = thread     
-            LOG.info('Thread for %s started' % path)
+            queue_threads[key] = thread     
+            LOG.info('Thread for %s started' % key)
 
     security.declareProtected(view, 'queueLength')
     def queueLength(self):
@@ -307,9 +314,9 @@ class MailBase(Implicit, Item, RoleManager):
 
     security.declareProtected(view, 'queueThreadAlive')
     def queueThreadAlive(self):
-        """ return True/False is queue thread is working """
-
-        th = queue_threads.get(self.absolute_url(1))
+        """ return True/False is queue thread is working
+        """
+        th = queue_threads.get(self._getThreadKey())
         if th:
             return th.isAlive()
         return False
@@ -417,16 +424,31 @@ def _mungeHeaders(messageText, mto=None, mfrom=None, subject=None,
         # we don't use get_content_type because that has a default
         # value of 'text/plain'
         mo.set_type(msg_type)
-    charset_match = CHARSET_RE.search(mo['Content-Type'] or '')
-    if charset and not charset_match:
-        # Don't change the charset if already set
-        # This encodes the payload automatically based on the default
-        # encoding for the charset
-        mo.set_charset(charset)
-    elif charset_match and not charset:
-        # If a charset parameter was provided use it for header encoding below,
-        # Otherwise, try to use the charset provided in the message.
-        charset = charset_match.groups()[0]
+    if not mo.is_multipart():
+        charset_match = CHARSET_RE.search(mo['Content-Type'] or '')
+        if charset and not charset_match:
+            # Don't change the charset if already set
+            # This encodes the payload automatically based on the default
+            # encoding for the charset
+            mo.set_charset(charset)
+        elif charset_match and not charset:
+            # If a charset parameter was provided use it for header encoding below,
+            # Otherwise, try to use the charset provided in the message.
+            charset = charset_match.groups()[0]
+    else:
+        # Do basically the same for each payload as for the complete
+        # multipart message.
+        for index, payload in enumerate(mo.get_payload()):
+            if not isinstance(payload, Message):
+                payload = message_from_string(payload)
+            charset_match = CHARSET_RE.search(payload['Content-Type'] or '')
+            if payload.get_filename() is None:
+                # No binary file
+                if charset and not charset_match:
+                    payload.set_charset(charset)
+                elif charset_match and not charset:
+                    charset = charset_match.groups()[0]
+            mo.get_payload()[index] = payload
 
     # Parameters given will *always* override headers in the messageText.
     # This is so that you can't override or add to subscribers by adding

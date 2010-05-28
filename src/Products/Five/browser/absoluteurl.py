@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2004, 2005 Zope Corporation and Contributors.
+# Copyright (c) 2004, 2005 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -62,7 +62,7 @@ class AbsoluteURL(BrowserView):
     def _getContextName(self, context):
         if getattr(context, 'getId', None) is not None:
             return context.getId()
-        getattr(context, '__name__', None)
+        return getattr(context, '__name__', None)
 
     def breadcrumbs(self):
         context = self.context

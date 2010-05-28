@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2002 Zope Corporation and Contributors. All Rights Reserved.
+# Copyright (c) 2002 Zope Foundation and Contributors.
 #
 # This software is subject to the provisions of the Zope Public License,
 # Version 2.1 (ZPL).  A copy of the ZPL should accompany this distribution.
@@ -374,11 +374,15 @@ class RAMCacheManager (CacheManager, SimpleItem):
             'request_vars': ('AUTHENTICATED_USER',),
             'max_age': 3600,
             }
-        self.__cacheid = '%s_%f' % (id(self), time.time())
+        self._resetCacheId()
 
     def getId(self):
         ' '
         return self.id
+
+    security.declarePrivate('_resetCacheId')
+    def _resetCacheId(self):
+        self.__cacheid = '%s_%f' % (id(self), time.time())
 
     ZCacheManager_getCache__roles__ = ()
     def ZCacheManager_getCache(self):

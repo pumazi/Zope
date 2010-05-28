@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2004, 2005 Zope Corporation and Contributors.
+# Copyright (c) 2004, 2005 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -55,5 +55,5 @@ def test_directive():
 
 
 def test_suite():
-    from zope.testing.doctest import DocTestSuite
+    from doctest import DocTestSuite
     return DocTestSuite(setUp=setUp, tearDown=tearDown)

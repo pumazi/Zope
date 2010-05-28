@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2003 Zope Corporation and Contributors.
+# Copyright (c) 2003 Zope Foundation and Contributors.
 # All Rights Reserved.
 #
 # This software is subject to the provisions of the Zope Public License,
@@ -49,8 +49,10 @@ class SMTPMailer(object):
         # send EHLO
         code, response = connection.ehlo()
         if code < 200 or code >300:
-            raise RuntimeError('Error sending EHLO to the SMTP server '
-                                '(code=%s, response=%s)' % (code, response))
+            code, response = connection.helo()
+            if code < 200 or code >300:
+                raise RuntimeError('Error sending HELO to the SMTP server '
+                                   '(code=%s, response=%s)' % (code, response))
 
         # encryption support
         have_tls =  connection.has_extn('starttls') 
