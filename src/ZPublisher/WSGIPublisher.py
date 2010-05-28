@@ -16,13 +16,16 @@ from cStringIO import StringIO
 import sys
 import time
 
-import transaction
 from zExceptions import Redirect
 from ZServer.medusa.http_date import build_http_date
 from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.HTTPRequest import HTTPRequest
-from ZPublisher.maybe_lock import allocate_lock
 from ZPublisher.mapply import mapply
+from ZPublisher.Publish import Retry
+from ZPublisher.Publish import call_object
+from ZPublisher.Publish import dont_publish_class
+from ZPublisher.Publish import get_module_info
+from ZPublisher.Publish import missing_name
 
 _NOW = None     # overwrite for testing
 def _now():
@@ -119,43 +122,6 @@ class WSGIResponse(HTTPResponse):
         append(body)
 
         return "\r\n".join(chunks)
-
-    
-class Retry(Exception):
-    """Raise this to retry a request
-    """
-
-    def __init__(self, t=None, v=None, tb=None):
-        self._args=t, v, tb
-
-    def reraise(self):
-        t, v, tb = self._args
-        if t is None: t=Retry
-        if tb is None: raise t, v
-        try: raise t, v, tb
-        finally: tb=None
-
-def call_object(object, args, request):
-    result=apply(object,args) # Type s<cr> to step into published object.
-    return result
-
-def missing_name(name, request):
-    if name=='self': return request['PARENTS'][0]
-    request.response.badRequestError(name)
-
-def dont_publish_class(klass, request):
-    request.response.forbiddenError("class %s" % klass.__name__)
-
-_default_debug_mode = False
-_default_realm = None
-
-def set_default_debug_mode(debug_mode):
-    global _default_debug_mode
-    _default_debug_mode = debug_mode
-
-def set_default_authentication_realm(realm):
-    global _default_realm
-    _default_realm = realm        
 
 def publish(request, module_name, after_list, debug=0,
             # Optimize:
@@ -266,7 +232,7 @@ def publish(request, module_name, after_list, debug=0,
                 transactions_manager.abort()
             raise
 
-def publish_module_standard(environ, start_response):
+def publish_module(environ, start_response):
 
     must_die=0
     status=200
@@ -335,150 +301,4 @@ def publish_module_standard(environ, start_response):
         
     # Return the result body iterable.
     return result
-
-
-_l=allocate_lock()
-def get_module_info(module_name, modules={},
-                    acquire=_l.acquire,
-                    release=_l.release,
-                    ):
-
-    if modules.has_key(module_name): return modules[module_name]
-
-    if module_name[-4:]=='.cgi': module_name=module_name[:-4]
-
-    acquire()
-    tb=None
-    g = globals()
-    try:
-        try:
-            module=__import__(module_name, g, g, ('__doc__',))
-
-            # Let the app specify a realm
-            if hasattr(module,'__bobo_realm__'):
-                realm=module.__bobo_realm__
-            elif _default_realm is not None:
-                realm=_default_realm
-            else:
-                realm=module_name
-
-            # Check for debug mode
-            debug_mode=None
-            if hasattr(module,'__bobo_debug_mode__'):
-                debug_mode=not not module.__bobo_debug_mode__
-            else:
-                debug_mode = _default_debug_mode
-
-            bobo_before = getattr(module, "__bobo_before__", None)
-            bobo_after = getattr(module, "__bobo_after__", None)
-
-            if hasattr(module,'bobo_application'):
-                object=module.bobo_application
-            elif hasattr(module,'web_objects'):
-                object=module.web_objects
-            else: object=module
-
-            error_hook=getattr(module,'zpublisher_exception_hook', None)
-            validated_hook=getattr(module,'zpublisher_validated_hook', None)
-
-            transactions_manager=getattr(
-                module,'zpublisher_transactions_manager', None)
-            if not transactions_manager:
-                # Create a default transactions manager for use
-                # by software that uses ZPublisher and ZODB but
-                # not the rest of Zope.
-                transactions_manager = DefaultTransactionsManager()
-
-            info= (bobo_before, bobo_after, object, realm, debug_mode,
-                   error_hook, validated_hook, transactions_manager)
-
-            modules[module_name]=modules[module_name+'.cgi']=info
-
-            return info
-        except:
-            t,v,tb=sys.exc_info()
-            v=str(v)
-            raise ImportError, (t, v), tb
-    finally:
-        tb=None
-        release()
-
-
-class DefaultTransactionsManager:
-    def begin(self):
-        transaction.begin()
-    def commit(self):
-        transaction.commit()
-    def abort(self):
-        transaction.abort()
-    def recordMetaData(self, object, request):
-        # Is this code needed?
-        request_get = request.get
-        T= transaction.get()
-        T.note(request_get('PATH_INFO'))
-        auth_user=request_get('AUTHENTICATED_USER',None)
-        if auth_user is not None:
-            T.setUser(auth_user, request_get('AUTHENTICATION_PATH'))
-
-# profiling support
-
-_pfile = None # profiling filename
-_plock=allocate_lock() # profiling lock
-_pfunc=publish_module_standard
-_pstat=None
-
-def install_profiling(filename):
-    global _pfile
-    _pfile = filename
-    
-def pm(environ, start_response):
-    try:
-        r=_pfunc(environ, start_response)
-    except: r=None
-    sys._pr_=r
-
-def publish_module_profiled(environ, start_response):
-    import profile, pstats
-    global _pstat
-    _plock.acquire()
-    try:
-        if request is not None:
-            path_info=request.get('PATH_INFO')
-        else: path_info=environ.get('PATH_INFO')
-        if path_info[-14:]=='manage_profile':
-            return _pfunc(environ, start_response)
-        pobj=profile.Profile()
-        pobj.runcall(pm, menviron, start_response)
-        result=sys._pr_
-        pobj.create_stats()
-        if _pstat is None:
-            _pstat=sys._ps_=pstats.Stats(pobj)
-        else: _pstat.add(pobj)
-    finally:
-        _plock.release()
-
-    if result is None:
-        try:
-            error=sys.exc_info()
-            file=open(_pfile, 'w')
-            file.write(
-            "See the url "
-            "http://www.python.org/doc/current/lib/module-profile.html"
-            "\n for information on interpreting profiler statistics.\n\n"
-                )
-            sys.stdout=file
-            _pstat.strip_dirs().sort_stats('cumulative').print_stats(250)
-            _pstat.strip_dirs().sort_stats('time').print_stats(250)
-            file.flush()
-            file.close()
-        except: pass
-        raise error[0], error[1], error[2]
-    return result
-
-def publish_module(environ, start_response):
-    """ publish a Python module, with or without profiling enabled """
-    if _pfile: # profiling is enabled
-        return publish_module_profiled(environ, start_response)
-    else:
-        return publish_module_standard(environ, start_response)
 
