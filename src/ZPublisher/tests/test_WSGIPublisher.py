@@ -129,6 +129,80 @@ class WSGIResponseTests(unittest.TestCase):
         str(response) # not checking value
         self.assertEqual(response.getHeader('Connection'), 'close')
 
+    def test___str___HTTP_1_1_connection_close(self):
+        response = self._makeOne()
+        response._http_version = '1.1'
+        response._http_connection = 'close'
+        str(response) # not checking value
+        self.assertEqual(response.getHeader('Connection'), 'close')
+
+    def test___str___HTTP_1_1_wo_content_length_streaming_wo_http_chunk(self):
+        response = self._makeOne()
+        response._http_version = '1.1'
+        response._streaming = True
+        response.http_chunk = 0
+        str(response) # not checking value
+        self.assertEqual(response.getHeader('Connection'), 'close')
+        self.assertEqual(response.getHeader('Transfer-Encoding'), None)
+        self.failIf(response._chunking)
+
+    def test___str___HTTP_1_1_wo_content_length_streaming_w_http_chunk(self):
+        response = self._makeOne()
+        response._http_version = '1.1'
+        response._streaming = True
+        response.http_chunk = 1
+        str(response) # not checking value
+        self.assertEqual(response.getHeader('Connection'), None)
+
+    def test___str___HTTP_1_1_w_content_length_wo_chunk_wo_streaming(self):
+        response = self._makeOne()
+        response._http_version = '1.1'
+        response.setBody('TESTING')
+        str(response) # not checking value
+        self.assertEqual(response.getHeader('Connection'), None)
+
+    def test___str____literal_header(self):
+        response = self._makeOne()
+        response.headers['LiTeral-header'] = 'TESTING'
+        result = str(response).splitlines()
+        self.failUnless('LiTeral-header: TESTING' in result)
+
+    def test___str____non_literal_header_no_dashes(self):
+        response = self._makeOne()
+        response.setHeader('literal', 'TESTING')
+        result = str(response).splitlines()
+        self.failUnless('Literal: TESTING' in result)
+
+    def test___str____non_literal_header_w_dashes(self):
+        response = self._makeOne()
+        response.setHeader('literal-with-dashes', 'TESTING')
+        result = str(response).splitlines()
+        self.failUnless('Literal-With-Dashes: TESTING' in result)
+
+    def test___str____no_cookies(self):
+        response = self._makeOne()
+        self.failIf('Set-Cookie' in str(response))
+
+    def test___str____w_cookies(self):
+        response = self._makeOne()
+        response.setCookie('username', 'phreddy')
+        result = str(response).splitlines()
+        self.failUnless('Set-Cookie: username="phreddy"' in result)
+
+    def test___str____w_accumulated_headers(self):
+        response = self._makeOne()
+        response.addHeader('X-username', 'phreddy')
+        result = str(response).splitlines()
+        self.failUnless('X-username: phreddy' in result)
+
+    def test___str___blankline_before_body(self):
+        response = self._makeOne()
+        response.setBody('TESTING')
+        result = str(response).splitlines()
+        self.assertEqual(result[-1], 'TESTING')
+        self.assertEqual(result[-2], '')
+
+
 def test_suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(WSGIResponseTests))
