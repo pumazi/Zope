@@ -914,15 +914,20 @@ class HTTPResponse(BaseResponse):
 
         return cookie_list
 
-    def listHeaders(self):
-        """ Return a list of (key, value) pairs for our headers.
-
-        o Do appropriate case normalization.
+    def finalize(self):
+        """ Set headers required by various parts of protocol.
         """
         body = self.body
         if (not 'content-length' in self.headers and 
             not 'transfer-encoding' in self.headers):
             self.setHeader('content-length', len(body))
+        return "%d %s" % (self.status, self.errmsg), self.listHeaders()
+
+    def listHeaders(self):
+        """ Return a list of (key, value) pairs for our headers.
+
+        o Do appropriate case normalization.
+        """
 
         result = [
           ('X-Powered-By', 'Zope (www.zope.org), Python (www.python.org)')
@@ -950,15 +955,15 @@ class HTTPResponse(BaseResponse):
         if self._wrote:
             return ''       # Streaming output was used.
 
-        headers = self.headers
+        status, headers = self.finalize()
         body = self.body
 
         chunks = []
 
         # status header must come first.
-        chunks.append("Status: %d %s" % (self.status, self.errmsg))
+        chunks.append("Status: %s" % status)
 
-        for key, value in self.listHeaders():
+        for key, value in headers:
             chunks.append("%s: %s" % (key, value))
         # RFC 2616 mandates empty line between headers and payload
         chunks.append('')

@@ -929,13 +929,67 @@ class HTTPResponseTests(unittest.TestCase):
         else:
             self.fail("Didn't raise Unauthorized")
 
+    def test_finalize_empty(self):
+        response = self._makeOne()
+        status, headers = response.finalize()
+        self.assertEqual(status, '200 OK')
+        self.assertEqual(headers,
+                         [('X-Powered-By', 'Zope (www.zope.org), '
+                                           'Python (www.python.org)'),
+                          ('Content-Length', '0'),
+                         ])
+
+    def test_finalize_w_body(self):
+        response = self._makeOne()
+        response.body = 'TEST'
+        status, headers = response.finalize()
+        self.assertEqual(status, '200 OK')
+        self.assertEqual(headers,
+                         [('X-Powered-By', 'Zope (www.zope.org), '
+                                           'Python (www.python.org)'),
+                          ('Content-Length', '4'),
+                         ])
+
+    def test_finalize_w_existing_content_length(self):
+        response = self._makeOne()
+        response.setHeader('Content-Length', '42')
+        status, headers = response.finalize()
+        self.assertEqual(status, '200 OK')
+        self.assertEqual(headers,
+                         [('X-Powered-By', 'Zope (www.zope.org), '
+                                           'Python (www.python.org)'),
+                          ('Content-Length', '42'),
+                         ])
+
+    def test_finalize_w_transfer_encoding(self):
+        response = self._makeOne()
+        response.setHeader('Transfer-Encoding', 'slurry')
+        status, headers = response.finalize()
+        self.assertEqual(status, '200 OK')
+        self.assertEqual(headers,
+                         [('X-Powered-By', 'Zope (www.zope.org), '
+                                           'Python (www.python.org)'),
+                          ('Transfer-Encoding', 'slurry'),
+                         ])
+
+    def test_finalize_after_redirect(self):
+        response = self._makeOne()
+        response.redirect('http://example.com/')
+        status, headers = response.finalize()
+        self.assertEqual(status, '302 Moved Temporarily')
+        self.assertEqual(headers,
+                         [('X-Powered-By', 'Zope (www.zope.org), '
+                                           'Python (www.python.org)'),
+                          ('Content-Length', '0'),
+                          ('Location', 'http://example.com/'),
+                         ])
+
     def test_listHeaders_empty(self):
         response = self._makeOne()
         headers = response.listHeaders()
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                          ])
 
     def test_listHeaders_already_wrote(self):
@@ -946,7 +1000,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                          ])
 
     def test_listHeaders_existing_content_length(self):
@@ -977,7 +1030,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('X-Consistency', 'Foolish'),
                          ])
 
@@ -988,7 +1040,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('X-consistency', 'Foolish'),
                          ])
 
@@ -999,7 +1050,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('Location', 'http://example.com/'),
                          ])
 
@@ -1011,7 +1061,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('Set-Cookie', 'foo="bar%3Abaz"; Path=/'),
                          ])
 
@@ -1022,7 +1071,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('Set-Cookie', 'qux="deleted"; '
                                          'Path=/; '
                                          'Expires=Wed, 31-Dec-97 23:59:59 GMT; '
@@ -1037,7 +1085,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
-                          ('Content-Length', '0'),
                           ('X-Consistency', 'Foolish'),
                           ('X-Consistency', 'Oatmeal'),
                          ])
