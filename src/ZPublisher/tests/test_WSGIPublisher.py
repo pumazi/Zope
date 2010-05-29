@@ -136,37 +136,22 @@ class WSGIResponseTests(unittest.TestCase):
                                 time.gmtime(time.mktime(WHEN)))
         self.failUnless(('Date', whenstr) in headers)
 
-    def test___str__already_wrote_not_chunking(self):
-        response = self._makeOne()
-        response._wrote = True
-        response._chunking = False
-        self.assertEqual(str(response), '')
+    #def test___str__already_wrote_not_chunking(self):
+    #    response = self._makeOne()
+    #    response._wrote = True
+    #    response._chunking = False
+    #    self.assertEqual(str(response), '')
 
-    def test___str__already_wrote_w_chunking(self):
-        response = self._makeOne()
-        response._wrote = True
-        response._chunking = True
-        self.assertEqual(str(response), '0\r\n\r\n')
+    #def test___str__already_wrote_w_chunking(self):
+    #    response = self._makeOne()
+    #    response._wrote = True
+    #    response._chunking = True
+    #    self.assertEqual(str(response), '0\r\n\r\n')
 
-    def test___str___w_default_http_version(self):
+    def test___str___raises(self):
         response = self._makeOne()
         response.setBody('TESTING')
-        result = str(response).splitlines()
-        self.assertEqual(result[0], 'HTTP/1.0 200 OK')
-
-    def test___str___w_explicit_http_version(self):
-        response = self._makeOne()
-        response.setBody('TESTING')
-        response._http_version = '1.1'
-        result = str(response).splitlines()
-        self.assertEqual(result[0], 'HTTP/1.1 200 OK')
-
-    def test___str___blankline_before_body(self):
-        response = self._makeOne()
-        response.setBody('TESTING')
-        result = str(response).splitlines()
-        self.assertEqual(result[-1], 'TESTING')
-        self.assertEqual(result[-2], '')
+        self.assertRaises(NotImplementedError, lambda: str(response))
 
 
 def test_suite():

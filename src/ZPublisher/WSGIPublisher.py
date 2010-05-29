@@ -97,27 +97,14 @@ class WSGIResponse(HTTPResponse):
 
     def __str__(self):
 
-        if self._wrote:
-            if self._chunking:
-                return '0\r\n\r\n'
-            else:
-                return ''
-
-        chunks = []
-        status, headers = self.finalize()
-
-        # status header must come first.
-        version = self._http_version or '1.0'
-        chunks.append("HTTP/%s %s" % (version, status))
-
-        for key, val in headers:
-            chunks.append("%s: %s" % (key, val))
-
-        # RFC 2616 mandates empty line between headers and payload
-        chunks.append('')
-        chunks.append(self.body)
-
-        return "\r\n".join(chunks)
+        # XXX Consider how we are to handle the cases this logic was trying
+        # to cover
+        #if self._wrote:
+        #    if self._chunking:
+        #        return '0\r\n\r\n'
+        #    else:
+        #        return ''
+        raise NotImplementedError
 
 def publish(request, module_name, after_list, debug=0):
 
