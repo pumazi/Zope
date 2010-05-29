@@ -18,11 +18,12 @@ import time
 from zExceptions import Redirect
 from zExceptions import Unauthorized
 from ZServer.medusa.http_date import build_http_date
-
+from zope.event import notify
 
 from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.HTTPRequest import HTTPRequest
 from ZPublisher.mapply import mapply
+from ZPublisher.pubevents import PubBeforeStreaming
 from ZPublisher.Publish import call_object
 from ZPublisher.Publish import dont_publish_class
 from ZPublisher.Publish import get_module_info
@@ -101,6 +102,22 @@ class WSGIResponse(HTTPResponse):
 
     def _unauthorized(self):
         self.setStatus(401)
+
+    def write(self,data):
+        """ Add data to our output stream.
+
+        HTML data may be returned using a stream-oriented interface.
+        This allows the browser to display partial results while
+        computation of a response to proceed.
+        """
+        if not self._streaming:
+            
+            notify(PubBeforeStreaming(self))
+            
+            self._streaming = 1
+            self.stdout.flush()
+
+        self.stdout.write(data)
 
     def setBody(self, body, title='', is_error=0):
         if isinstance(body, file):
