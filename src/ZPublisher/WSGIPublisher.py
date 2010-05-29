@@ -19,6 +19,7 @@ from zExceptions import Redirect
 from zExceptions import Unauthorized
 from ZServer.medusa.http_date import build_http_date
 
+
 from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.HTTPRequest import HTTPRequest
 from ZPublisher.mapply import mapply
@@ -211,7 +212,13 @@ def publish_module(environ, start_response):
         # XXX This still needs verification that it really works.
         result=(stdout.getvalue(), response.body)
 
-    request.close()
+    if 'repoze.tm.active' in environ:
+        import transaction
+        txn = transaction.get()
+        txn.addAfterCommitHook(lambda ok: request.close())
+    else:
+        request.close() # this aborts the transation!
+
     stdout.close()
 
     if after_list[0] is not None:
