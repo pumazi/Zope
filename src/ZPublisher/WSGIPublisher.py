@@ -15,7 +15,10 @@
 from cStringIO import StringIO
 import time
 
+from zExceptions import Redirect
+from zExceptions import Unauthorized
 from ZServer.medusa.http_date import build_http_date
+
 from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.HTTPRequest import HTTPRequest
 from ZPublisher.mapply import mapply
@@ -94,6 +97,19 @@ class WSGIResponse(HTTPResponse):
         result.append(('Date', build_http_date(_now())))
         result.extend(HTTPResponse.listHeaders(self))
         return result
+
+    def _unauthorized(self):
+        self.setStatus(401)
+
+    def setBody(self, body, title='', is_error=0):
+        if isinstance(body, file):
+            body.seek(0, 2)
+            length = body.tell()
+            body.seek(0)
+            self.setHeader('Content-Length', '%d' % length)
+            self.body = body
+        else:
+            HTTPResponse.setBody(self, body, title, is_error)
 
     def __str__(self):
 
@@ -175,21 +191,26 @@ def publish_module(environ, start_response):
     # Let's support post-mortem debugging
     handle_errors = environ.get('wsgi.handleErrors', True)
 
-    response = publish(request, 'Zope2', after_list=[None],
-                       debug=handle_errors)
-    if response:
-        # Start the WSGI server response
-        status, headers = response.finalize()
-        # ZServerHTTPResponse calculates all headers and things when you
-        # call it's __str__, so we need to get it, and then munge out
-        # the headers from it. It's a bit backwards, and we might optimize
-        # this by not using ZServerHTTPResponse at all, and making the
-        # HTTPResponses more WSGI friendly. But this works.
-        start_response(status, headers)
+    try:
+        response = publish(request, 'Zope2', after_list=[None],
+                        debug=handle_errors)
+    except Unauthorized, v:
+        pass
+    except Redirect, v:
+        response.redirect(v)
+
+    # Start the WSGI server response
+    status, headers = response.finalize()
+    start_response(status, headers)
+
+    if isinstance(response.body, file):
+        result = response.body
+    else:
         # If somebody used response.write, that data will be in the
         # stdout StringIO, so we put that before the body.
         # XXX This still needs verification that it really works.
         result=(stdout.getvalue(), response.body)
+
     request.close()
     stdout.close()
 
