@@ -887,9 +887,9 @@ class HTTPResponse(BaseResponse):
             # of name=value pairs may be quoted.
 
             if attrs.get('quoted', True):
-                cookie = 'Set-Cookie: %s="%s"' % (name, quote(attrs['value']))
+                cookie = '%s="%s"' % (name, quote(attrs['value']))
             else:
-                cookie = 'Set-Cookie: %s=%s' % (name, quote(attrs['value']))
+                cookie = '%s=%s' % (name, quote(attrs['value']))
             for name, v in attrs.items():
                 name = name.lower()
                 if name == 'expires':
@@ -908,11 +908,41 @@ class HTTPResponse(BaseResponse):
                 # and block read/write access via JavaScript
                 elif name == 'http_only' and v:
                     cookie = '%s; HTTPOnly' % cookie
-            cookie_list.append(cookie)
+            cookie_list.append(('Set-Cookie', cookie))
 
         # Should really check size of cookies here!
 
         return cookie_list
+
+    def listHeaders(self):
+        """ Return a list of (key, value) pairs for our headers.
+
+        o Do appropriate case normalization.
+        """
+        body = self.body
+        if (not 'content-length' in self.headers and 
+            not 'transfer-encoding' in self.headers):
+            self.setHeader('content-length', len(body))
+
+        result = [
+          ('X-Powered-By', 'Zope (www.zope.org), Python (www.python.org)')
+        ]
+
+        for key, value in self.headers.items():
+            if key.lower() == key:
+                # only change non-literal header names
+                key = "%s%s" % (key[:1].upper(), key[1:])
+                start = 0
+                l = key.find('-',start)
+                while l >= start:
+                    key = "%s-%s%s" % (key[:l],key[l+1:l+2].upper(),key[l+2:])
+                    start = l + 1
+                    l = key.find('-', start)
+            result.append((key, value))
+
+        result.extend(self._cookie_list())
+        result.extend(self.accumulated_headers)
+        return result
 
     def __str__(self,
                 html_search=re.compile('<html>',re.I).search,
@@ -923,32 +953,16 @@ class HTTPResponse(BaseResponse):
         headers = self.headers
         body = self.body
 
-        if not headers.has_key('content-length') and \
-                not headers.has_key('transfer-encoding'):
-            self.setHeader('content-length',len(body))
-
         chunks = []
-        append = chunks.append
 
         # status header must come first.
-        append("Status: %d %s" % (self.status, self.errmsg))
-        append("X-Powered-By: Zope (www.zope.org), Python (www.python.org)")
-        for key, value in headers.items():
-            if key.lower() == key:
-                # only change non-literal header names
-                key = "%s%s" % (key[:1].upper(), key[1:])
-                start = 0
-                l = key.find('-',start)
-                while l >= start:
-                    key = "%s-%s%s" % (key[:l],key[l+1:l+2].upper(),key[l+2:])
-                    start = l + 1
-                    l = key.find('-', start)
-            append("%s: %s" % (key, value))
-        chunks.extend(self._cookie_list())
-        for key, value in self.accumulated_headers:
-            append("%s: %s" % (key, value))
-        append('') # RFC 2616 mandates empty line between headers and payload
-        append(body) 
+        chunks.append("Status: %d %s" % (self.status, self.errmsg))
+
+        for key, value in self.listHeaders():
+            chunks.append("%s: %s" % (key, value))
+        # RFC 2616 mandates empty line between headers and payload
+        chunks.append('')
+        chunks.append(body) 
         return '\r\n'.join(chunks)
 
     def write(self,data):
