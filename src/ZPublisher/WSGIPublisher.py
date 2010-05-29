@@ -168,7 +168,7 @@ def publish_module(environ, start_response):
     response = WSGIResponse(stdout=stdout, stderr=stderr)
     response._http_version = environ['SERVER_PROTOCOL'].split('/')[1]
     response._http_connection = environ.get('CONNECTION_TYPE', 'close')
-    response._server_version = environ['SERVER_SOFTWARE']
+    response._server_version = environ.get('SERVER_SOFTWARE')
 
     request = HTTPRequest(environ['wsgi.input'], environ, response)
 
@@ -198,4 +198,3 @@ def publish_module(environ, start_response):
 
     # Return the result body iterable.
     return result
-

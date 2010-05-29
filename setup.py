@@ -117,6 +117,9 @@ setup(name='Zope2',
     include_package_data=True,
     zip_safe=False,
     entry_points={
+       'paste.app_factory': [
+          'main=Zope2.Startup.run:make_wsgi_app',
+       ],
        'console_scripts': [
           'mkzeoinstance=zope.mkzeoinstance:main',
           'mkzopeinstance=Zope2.utilities.mkzopeinstance:main',
