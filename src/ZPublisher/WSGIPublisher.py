@@ -22,6 +22,10 @@ from zope.event import notify
 
 from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.HTTPRequest import HTTPRequest
+
+from zope.publisher.interfaces import ISkinnable
+from zope.publisher.skinnable import setDefaultSkin
+
 from ZPublisher.mapply import mapply
 from ZPublisher.pubevents import PubBeforeStreaming
 from ZPublisher.Publish import call_object
@@ -141,7 +145,6 @@ class WSGIResponse(HTTPResponse):
         raise NotImplementedError
 
 def publish(request, module_name, after_list, debug=0):
-
     (bobo_before,
      bobo_after,
      object,
@@ -171,7 +174,6 @@ def publish(request, module_name, after_list, debug=0):
     path = request.get('PATH_INFO')
 
     request['PARENTS'] = parents = [object]
-
     object = request.traverse(path, validated_hook=validated_hook)
 
     if transactions_manager:
@@ -194,7 +196,6 @@ def publish(request, module_name, after_list, debug=0):
     return response
 
 def publish_module(environ, start_response):
-
     status = 200
     after_list = [None]
     stdout = StringIO()
@@ -205,7 +206,9 @@ def publish_module(environ, start_response):
     response._server_version = environ.get('SERVER_SOFTWARE')
 
     request = HTTPRequest(environ['wsgi.input'], environ, response)
-
+    if ISkinnable.providedBy(request):
+        setDefaultSkin(request)
+        
     # Let's support post-mortem debugging
     handle_errors = environ.get('wsgi.handleErrors', True)
 
