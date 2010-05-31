@@ -15,17 +15,15 @@
 from cStringIO import StringIO
 import time
 
+import transaction
 from zExceptions import Redirect
 from zExceptions import Unauthorized
-from ZServer.medusa.http_date import build_http_date
 from zope.event import notify
-
-from ZPublisher.HTTPResponse import HTTPResponse
-from ZPublisher.HTTPRequest import HTTPRequest
-
-from zope.publisher.interfaces import ISkinnable
 from zope.publisher.skinnable import setDefaultSkin
+from ZServer.medusa.http_date import build_http_date
 
+from ZPublisher.HTTPRequest import HTTPRequest
+from ZPublisher.HTTPResponse import HTTPResponse
 from ZPublisher.mapply import mapply
 from ZPublisher.pubevents import PubBeforeStreaming
 from ZPublisher.Publish import call_object
@@ -148,11 +146,8 @@ class WSGIResponse(HTTPResponse):
         raise NotImplementedError
 
 def publish(request, module_name,
-            _get_module_info=None,  # only for testing
+            _get_module_info=get_module_info,  # only for testing
            ):
-    if _get_module_info is None:
-        _get_module_info = get_module_info
-
     (bobo_before,
      bobo_after,
      object,
@@ -204,23 +199,26 @@ def publish(request, module_name,
 
     return response
 
-def publish_module(environ, start_response):
+def publish_module(environ, start_response,
+                   _publish=publish,                # only for testing
+                   _response_factory=WSGIResponse,  # only for testing
+                   _request_factory=HTTPRequest,    # only for testing
+                  ):
     status = 200
     stdout = StringIO()
     stderr = StringIO()
-    response = WSGIResponse(stdout=stdout, stderr=stderr)
+    response = _response_factory(stdout=stdout, stderr=stderr)
     response._http_version = environ['SERVER_PROTOCOL'].split('/')[1]
     response._http_connection = environ.get('CONNECTION_TYPE', 'close')
     response._server_version = environ.get('SERVER_SOFTWARE')
 
-    request = HTTPRequest(environ['wsgi.input'], environ, response)
-    if ISkinnable.providedBy(request):
-        setDefaultSkin(request)
+    request = _request_factory(environ['wsgi.input'], environ, response)
+    setDefaultSkin(request)
 
     try:
-        response = publish(request, 'Zope2')
+        response = _publish(request, 'Zope2')
     except Unauthorized, v:
-        pass
+        response._unauthorized()
     except Redirect, v:
         response.redirect(v)
 
@@ -234,10 +232,9 @@ def publish_module(environ, start_response):
         # If somebody used response.write, that data will be in the
         # stdout StringIO, so we put that before the body.
         # XXX This still needs verification that it really works.
-        result=(stdout.getvalue(), response.body)
+        result = (stdout.getvalue(), response.body)
 
     if 'repoze.tm.active' in environ:
-        import transaction
         txn = transaction.get()
         txn.addAfterCommitHook(lambda ok: request.close())
     else:
