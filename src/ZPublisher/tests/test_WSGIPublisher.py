@@ -154,6 +154,71 @@ class WSGIResponseTests(unittest.TestCase):
         self.assertRaises(NotImplementedError, lambda: str(response))
 
 
+class Test_publish(unittest.TestCase):
+
+    def _callFUT(self, request, module_name, _get_module_info=None):
+        from ZPublisher.WSGIPublisher import publish
+        if _get_module_info is None:
+            return publish(request, module_name)
+
+        return publish(request, module_name, _get_module_info)
+
+    def test_invalid_module_doesnt_catch_error(self):
+        _gmi = DummyCallable()
+        _gmi._raise = ImportError('testing')
+        self.assertRaises(ImportError, self._callFUT, None, 'nonesuch', _gmi)
+        self.assertEqual(_gmi._called_with, (('nonesuch',), {}))
+
+    def test_wo_REMOTE_USER(self):
+        request = DummyRequest(PATH_INFO='/')
+        response = request.response = DummyResponse()
+        _before = DummyCallable()
+        _after = object()
+        _object = DummyCallable()
+        _object._result = 'RESULT'
+        request._traverse_to = _object
+        _realm = 'TESTING'
+        _debug_mode = True
+        _err_hook = DummyCallable()
+        _validated_hook = object()
+        _tm = DummyTM()
+        _gmi = DummyCallable()
+        _gmi._result = (_before, _after, _object, _realm, _debug_mode,
+                        _err_hook, _validated_hook, _tm)
+        returned = self._callFUT(request, 'okmodule', _gmi)
+        self.failUnless(returned is response)
+        self.assertEqual(_gmi._called_with, (('okmodule',), {}))
+        self.failUnless(request._processedInputs)
+        self.assertEqual(response.after_list, (_after,))
+        self.failUnless(response.debug_mode)
+        self.assertEqual(response.realm, 'TESTING')
+        self.assertEqual(_before._called_with, ((), {}))
+        self.assertEqual(request['PARENTS'], [_object])
+        self.assertEqual(request._traversed, ('/', None, _validated_hook))
+        self.assertEqual(_tm._recorded, (_object, request))
+        self.assertEqual(_object._called_with, ((), {}))
+        self.assertEqual(response._body, 'RESULT')
+        self.assertEqual(_err_hook._called_with, None)
+
+    def test_w_REMOTE_USER(self):
+        request = DummyRequest(PATH_INFO='/', REMOTE_USER='phred')
+        response = request.response = DummyResponse()
+        _before = DummyCallable()
+        _after = object()
+        _object = DummyCallable()
+        _object._result = 'RESULT'
+        request._traverse_to = _object
+        _realm = 'TESTING'
+        _debug_mode = True
+        _err_hook = DummyCallable()
+        _validated_hook = object()
+        _tm = DummyTM()
+        _gmi = DummyCallable()
+        _gmi._result = (_before, _after, _object, _realm, _debug_mode,
+                        _err_hook, _validated_hook, _tm)
+        self._callFUT(request, 'okmodule', _gmi)
+        self.assertEqual(response.realm, None)
+
 class Test_publish_module(unittest.TestCase):
     
     def setUp(self):
@@ -223,12 +288,50 @@ class Test_publish_module(unittest.TestCase):
                          ('', 'foobar'))
     
 
+class DummyRequest(dict):
+    _processedInputs = False
+    _traversed = None
+    _traverse_to = None
+    args = ()
+
+    def processInputs(self):
+        self._processedInputs = True
+
+    def traverse(self, path, response=None, validated_hook=None):
+        self._traversed = (path, response, validated_hook)
+        return self._traverse_to
+
+class DummyResponse(object):
+    debug_mode = False
+    after_list = ()
+    realm = None
+    _body = None
+
+    def setBody(self, body):
+        self._body = body
+
+class DummyCallable(object):
+    _called_with = _raise = _result = None
+
+    def __call__(self, *args, **kw):
+        self._called_with = (args, kw)
+        if self._raise:
+            raise self._raise
+        return self._result
+
+class DummyTM(object):
+    _recorded = _raise = _result = None
+
+    def recordMetaData(self, *args):
+        self._recorded = args
+
 def noopStartResponse(status, headers):
     pass
 
 
 def test_suite():
     return unittest.TestSuite((
-        unittest.makeSuite(WSGIResponseTests, 'test'),
-        unittest.makeSuite(Test_publish_module, 'test'),
+        unittest.makeSuite(WSGIResponseTests),
+        unittest.makeSuite(Test_publish),
+        unittest.makeSuite(Test_publish_module),
     ))

@@ -56,6 +56,9 @@ class WSGIResponse(HTTPResponse):
     # HTTP/1.1 should use chunked encoding
     http_chunk = 0
 
+    # Append any "cleanup" functions to this list.
+    after_list = ()
+
     def finalize(self):
 
         headers = self.headers
@@ -144,7 +147,12 @@ class WSGIResponse(HTTPResponse):
         #        return ''
         raise NotImplementedError
 
-def publish(request, module_name, after_list, debug=0):
+def publish(request, module_name,
+            _get_module_info=None,  # only for testing
+           ):
+    if _get_module_info is None:
+        _get_module_info = get_module_info
+
     (bobo_before,
      bobo_after,
      object,
@@ -153,12 +161,13 @@ def publish(request, module_name, after_list, debug=0):
      err_hook,
      validated_hook,
      transactions_manager,
-    )= get_module_info(module_name)
+    )= _get_module_info(module_name)
 
     request.processInputs()
     response = request.response
 
-    after_list[0] = bobo_after
+    if bobo_after is not None:
+        response.after_list += (bobo_after,)
 
     if debug_mode:
         response.debug_mode = debug_mode
@@ -197,7 +206,6 @@ def publish(request, module_name, after_list, debug=0):
 
 def publish_module(environ, start_response):
     status = 200
-    after_list = [None]
     stdout = StringIO()
     stderr = StringIO()
     response = WSGIResponse(stdout=stdout, stderr=stderr)
@@ -208,13 +216,9 @@ def publish_module(environ, start_response):
     request = HTTPRequest(environ['wsgi.input'], environ, response)
     if ISkinnable.providedBy(request):
         setDefaultSkin(request)
-        
-    # Let's support post-mortem debugging
-    handle_errors = environ.get('wsgi.handleErrors', True)
 
     try:
-        response = publish(request, 'Zope2', after_list=[None],
-                        debug=handle_errors)
+        response = publish(request, 'Zope2')
     except Unauthorized, v:
         pass
     except Redirect, v:
@@ -241,8 +245,8 @@ def publish_module(environ, start_response):
 
     stdout.close()
 
-    if after_list[0] is not None:
-        after_list[0]()
+    for callable in response.after_list:
+        callable()
 
     # Return the result body iterable.
     return result
