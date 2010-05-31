@@ -154,89 +154,81 @@ class WSGIResponseTests(unittest.TestCase):
         self.assertRaises(NotImplementedError, lambda: str(response))
 
 
-def noopStartResponse(status, headers):
-    pass
-
-
-class WSGIPublisherTests(unittest.TestCase):
-    _dummy_interface = None
+class Test_publish_module(unittest.TestCase):
     
     def setUp(self):
         from zope.testing.cleanup import cleanUp
 
         cleanUp()
-        self._registerAdapters()
 
-    def _dummyInterface(self):
+    def tearDown(self):
+        from zope.testing.cleanup import cleanUp
+        cleanUp()
+
+    def _callFUT(self, environ, start_response):
+        from ZPublisher.WSGIPublisher import publish_module
+        return publish_module(environ, start_response)
+
+    def _registerView(self, factory, name, provides=None):
+        from zope.component import provideAdapter
         from zope.interface import Interface
-        if self._dummy_interface is not None:
-            return self._dummy_interface
-
-        class IDummy(Interface):
-            """IDummy"""
-
-        self._dummy_interface = IDummy
-        return IDummy
-
-    def _registerAdapters(self):
-        from Acquisition import Implicit
-        from zope.component import getGlobalSiteManager
-        from zope.interface import Interface
-        from zope.publisher.browser import BrowserPage
         from zope.publisher.browser import IDefaultBrowserLayer
-        from zope.traversing.interfaces import ITraversable
-        from zope.traversing.namespace import view
         from OFS.interfaces import IApplication
+        if provides is None:
+            provides = Interface
+        requires = (IApplication, IDefaultBrowserLayer)
+        provideAdapter(factory, requires, provides, name)
 
-        gsm = getGlobalSiteManager()
-
-        IDummy = self._dummyInterface()
-
-        class TestPage(BrowserPage):
-            __name__ = 'testing'
-            def __call__(self):
-                return 'foobar'
-
-        # Define the views
-        gsm.registerAdapter(TestPage, (IApplication, IDefaultBrowserLayer),
-                            Interface, 'testing')
-
-        # Bind the 'view' namespace (for @@ traversal)
-        gsm.registerAdapter(view,
-                            (IApplication, IDefaultBrowserLayer),
-                            ITraversable, 'view')
-
-    def test_publish_module_uses_setDefaultSkin(self):
+    def _makeEnviron(self, **kw):
         from StringIO import StringIO
-                        
-        self._registerAdapters()
         environ = {
             'SCRIPT_NAME' : '',
-            'PATH_INFO' : '/@@testing',
             'REQUEST_METHOD' : 'GET',
             'QUERY_STRING' : '',
             'SERVER_NAME' : '127.0.0.1',
             'REMOTE_ADDR': '127.0.0.1', 
             'wsgi.url_scheme': 'http', 
-            'SERVER_PORT': '80', 
-            'HTTP_HOST': '127.0.0.1:80', 
+            'SERVER_PORT': '8080', 
+            'HTTP_HOST': '127.0.0.1:8080', 
             'SERVER_PROTOCOL' : 'HTTP/1.1',
             'wsgi.input' : StringIO(''),
             'CONTENT_LENGTH': '0',
             'HTTP_CONNECTION': 'keep-alive',
             'CONTENT_TYPE': ''
         }
-        
-        from ZPublisher.WSGIPublisher import publish_module
-        self.failUnless(publish_module(environ, noopStartResponse) == ('', 'foobar'))
+        environ.update(kw)
+        return environ
+
+    def test_publish_module_uses_setDefaultSkin(self):
+        from zope.traversing.interfaces import ITraversable
+        from zope.traversing.namespace import view
+
+        class TestView:
+            __name__ = 'testing'
+
+            def __init__(self, context, request):
+                pass
+
+            def __call__(self):
+                return 'foobar'
+
+        # Define the views
+        self._registerView(TestView, 'testing')
+
+        # Bind the 'view' namespace (for @@ traversal)
+        self._registerView(view, 'view', ITraversable)
+
+        environ = self._makeEnviron(PATH_INFO='/@@testing')
+        self.assertEqual(self._callFUT(environ, noopStartResponse),
+                         ('', 'foobar'))
     
+
+def noopStartResponse(status, headers):
+    pass
+
 
 def test_suite():
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(WSGIResponseTests, 'test'))
-    suite.addTest(unittest.makeSuite(WSGIPublisherTests, 'test'))
-    return suite
-
-if __name__ == '__main__':
-    unittest.main(defaultTest='test_suite')
-    
+    return unittest.TestSuite((
+        unittest.makeSuite(WSGIResponseTests, 'test'),
+        unittest.makeSuite(Test_publish_module, 'test'),
+    ))
