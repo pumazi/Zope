@@ -32,14 +32,18 @@ folder_name = ZopeTestCase.folder_name
 cutpaste_permissions = [add_documents_images_and_files, delete_objects]
 
 # Dummy object
+from OFS.Folder import Folder
 from OFS.SimpleItem import SimpleItem
+from zope.location import Location
 
-class DummyObject(SimpleItem):
+class DummyObject(Location, SimpleItem):
     id = 'dummy'
     foo = None
     _v_foo = None
     _p_foo = None
 
+class DummyFolder(Location, Folder):
+    pass
 
 
 class ZODBCompatLayer(layer.ZopeLite):
@@ -131,6 +135,23 @@ class TestImportExport(ZopeTestCase.ZopeTestCase):
         self.folder._delObject('doc')
         self.folder.manage_importObject('doc.zexp')
         self.assertTrue(hasattr(self.folder, 'doc'))
+    
+    def testImportResetsParent(self):
+        self.app._setObject('folder1', DummyFolder())
+        folder1 = self.app.folder1
+        dummy = DummyObject()
+        dummy.id = 'doc'
+        folder1._setObject('doc', dummy)
+        transaction.savepoint(optimistic=True)
+        self.assertFalse(folder1.doc._p_oid is None)
+        self.assertTrue(folder1.doc.__parent__ is folder1)
+        
+        folder1.manage_exportObject('doc')
+        self.app._delObject('folder1')
+        
+        self.app.manage_importObject('doc.zexp')
+        self.assertTrue('doc' in self.app)
+        self.assertTrue(self.app.doc.__parent__ is self.app)
 
     # To make export and import happy, we have to provide a file-
     # system 'import' directory and adapt the configuration a bit:

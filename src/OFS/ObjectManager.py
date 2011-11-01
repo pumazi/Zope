@@ -68,6 +68,7 @@ from OFS.subscribers import compatibilityCall
 from OFS.XMLExportImport import importXML
 from OFS.XMLExportImport import exportXML
 from OFS.XMLExportImport import magic
+from OFS.ZEXPExport import exportZEXP
 
 # Constants: __replaceable__ flags:
 NOT_REPLACEABLE = 0
@@ -609,7 +610,7 @@ class ObjectManager(CopyContainer,
         if toxml:
             exportXML(ob._p_jar, ob._p_oid, f)
         else:
-            ob._p_jar.exportFile(ob._p_oid, f)
+            exportZEXP(ob, f)
 
         if REQUEST is not None:
             return self.manage_main(self, REQUEST,
