@@ -87,6 +87,11 @@ class Folder(
 
         if name in allowed_names:
             return True
+
+        whitelisted = self.getWhitelistedSubobjects()
+
+        if name in whitelisted:
+            return True
         
         return False
 

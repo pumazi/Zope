@@ -332,6 +332,7 @@ class TestTraverse( unittest.TestCase ):
         self._setupSecurity()
         folder = self.root.folder1
         folder.stuff = 'stuff here'
+        folder.whitelistSubobject("stuff")
         bb = self._makeBoboTraversableWithAcquisition()
         bb = bb.__of__(folder)
         self.assertEqual(

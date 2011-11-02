@@ -795,6 +795,25 @@ class ObjectManager(CopyContainer,
     def values(self):
         return self.objectValues()
 
+
+    security.declarePrivate("whitelistSubject")
+    def whitelistSubobject(self, name):
+        """
+        Handle the lack of __allow_subobject_access__ and mark certain object attribute traversable.        
+        """
+        whitelisted = getattr(self, "_instance_allowed_subobjects", ())
+        whitelisted = whitelisted + (name,)
+        self._instance_allowed_subobjects = whitelisted    
+        return whitelisted    
+
+    security.declarePrivate("getWhitelistedAttributes")
+    def getWhitelistedSubobjects(self):
+        """
+        Get list of instance attribute names which are publicly traverseable subobjects.
+        """
+        whitelisted = getattr(self, "_instance_allowed_subobjects", ())
+        return whitelisted
+
 # Don't InitializeClass, there is a specific __class_init__ on ObjectManager
 # InitializeClass(ObjectManager)
 
