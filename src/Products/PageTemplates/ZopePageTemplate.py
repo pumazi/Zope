@@ -97,6 +97,9 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
     security = ClassSecurityInfo()
     security.declareObjectProtected(view)
 
+    # Make sure macros are explicitly traversable
+    security.declareProtected(view, 'macros')
+
     # protect methods from base class(es)
     security.declareProtected(view, '__call__')
     security.declareProtected(view_management_screens,
@@ -419,6 +422,9 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
 
     def wl_isLocked(self):
         return 0
+
+
+    
 
 
 InitializeClass(ZopePageTemplate)
