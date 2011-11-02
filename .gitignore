@@ -3,6 +3,7 @@
 
 bin/
 develop-eggs/
+develop/
 eggs/
 include/
 lib/

@@ -105,6 +105,7 @@ setup(name='Zope2',
       'zope.testing',
       'zope.traversing',
       'zope.viewlet',
+      'WebOb',
     ] + additional_install_requires,
 
     include_package_data=True,
