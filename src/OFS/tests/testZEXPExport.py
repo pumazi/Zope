@@ -39,7 +39,6 @@ class ZEXPExportTests(ZODB.tests.util.TestCase):
         root['test'] = pm = PersistentMapping()
         for n in range(100):
             pm[n] = PersistentMapping({0: 100 - n})
-        pm.__parent__ = PersistentMapping()
         transaction.get().note('created test data')
         transaction.commit()
         conn.close()
@@ -97,7 +96,6 @@ class ZEXPExportTests(ZODB.tests.util.TestCase):
                 raise
         else:
             self.failUnless(not abort_it, 'Did not abort duplication')
-        self.assertFalse(hasattr(ob2, '__parent__'))
         l1 = list(ob.items())
         l1.sort()
         l2 = list(ob2.items())

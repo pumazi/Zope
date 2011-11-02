@@ -69,7 +69,13 @@ class RootObjectWriter(ObjectWriter):
         self.oids = oids
     
     def persistent_id(self, obj):
-        pid = ObjectWriter.persistent_id(self, obj)
-        if pid is not None and obj is not self.parent:
-            self.oids.append(pid)
-        return pid
+        ref = ObjectWriter.persistent_id(self, obj)
+        if ref is not None and obj is not self.parent:
+            if isinstance(ref, tuple):
+                oid = ref[0]
+            elif isinstance(ref, str):
+                oid = ref
+            else:
+                assert isinstance(ref, list)
+            self.oids.append(oid)
+        return ref
