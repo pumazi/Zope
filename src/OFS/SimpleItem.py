@@ -93,6 +93,9 @@ class Item(Base,
     # Direct use of the 'id' attribute is deprecated - use getId()
     id = ''
 
+    # Explicitly expose id attreibute when subject access is off
+    security.declarePublic('id')
+
     security.declarePublic('getId')
     def getId(self):
         """Return the id of the object as a string.
@@ -128,7 +131,7 @@ class Item(Base,
     REQUEST = Acquired
 
     # Allow (reluctantly) access to unprotected attributes
-    __allow_access_to_unprotected_subobjects__=1
+    __allow_access_to_unprotected_subobjects__=0
 
     def title_or_id(self):
         """Return the title if it is not blank and the id otherwise.
