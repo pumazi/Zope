@@ -27,6 +27,7 @@ import time
 from urllib import unquote
 from urllib import splittype
 from urllib import splitport
+import webob
 
 from zope.i18n.interfaces import IUserPreferredLanguages
 from zope.i18n.locales import locales, LoadLocaleError
@@ -88,6 +89,7 @@ tainting_env = str(os.environ.get('ZOPE_DTML_REQUEST_AUTOQUOTE', '')).lower()
 TAINTING_ENABLED = tainting_env not in ('disabled', '0', 'no')
 
 _marker = []
+_not_given = 'very much not given'
 
 # The trusted_proxies configuration setting contains a sequence
 # of front-end proxies that are trusted to supply an accurate
@@ -103,7 +105,7 @@ trusted_proxies = []
 class NestedLoopExit(Exception):
     pass
 
-class HTTPRequest(BaseRequest):
+class HTTPRequest(webob.Request, BaseRequest):
     """ Model HTTP request data.
 
     This object provides access to request data.  This includes, the
@@ -153,11 +155,12 @@ class HTTPRequest(BaseRequest):
     The request object may be used as a mapping object, in which case
     values will be looked up in the order: environment variables,
     other variables, form data, and then cookies.
+
+    WebOb added into Zope at pre-ploneconf 2011 sprint: 'dammit, Manhattans, fuck!'
     """
 
     # The claim to implement IBrowserRequest has been made during the Zope3
     # integration project called Five but hasn't been completed in full.
-
     implements(IBrowserRequest)
 
     _hacked_path = None
@@ -196,8 +199,7 @@ class HTTPRequest(BaseRequest):
 
     def setServerURL(self, protocol=None, hostname=None, port=None):
         """ Set the parts of generated URLs. """
-        other = self.other
-        server_url = other.get('SERVER_URL', '')
+        server_url = getattr(self, 'SERVER_URL', '')
         if protocol is None and hostname is None and port is None:
             return server_url
         oldprotocol, oldhost = splittype(server_url)
@@ -213,21 +215,20 @@ class HTTPRequest(BaseRequest):
             host = hostname
         else:
             host = hostname + ':' + port
-        server_url = other['SERVER_URL'] = '%s://%s' % (protocol, host)
+        server_url = self.SERVER_URL = '%s://%s' % (protocol, host)
         self._resetURLS()
         return server_url
 
     def setVirtualRoot(self, path, hard=0):
         """ Treat the current publishing object as a VirtualRoot """
-        other = self.other
         if isinstance(path, str) or isinstance(path, unicode):
             path = path.split('/')
         self._script[:] = map(quote, filter(None, path))
         del self._steps[:]
-        parents = other['PARENTS']
+        parents = self.PARENTS
         if hard:
             del parents[:-1]
-        other['VirtualRootPhysicalPath'] = parents[-1].getPhysicalPath()
+        self.VirtualRootPhysicalPath = parents[-1].getPhysicalPath()
         self._resetURLS()
 
     def getVirtualRoot(self):
@@ -241,7 +242,7 @@ class HTTPRequest(BaseRequest):
         """ Remove the path to the VirtualRoot from a physical path """
         if type(path) is type(''):
             path = path.split( '/')
-        rpp = self.other.get('VirtualRootPhysicalPath', ('',))
+        rpp = getattr(self, 'VirtualRootPhysicalPath', ('',))
         i = 0
         for name in rpp[:len(path)]:
             if path[i] == name:
@@ -256,14 +257,13 @@ class HTTPRequest(BaseRequest):
         if relative:
             path.insert(0, '')
         else:
-            path.insert(0, self['SERVER_URL'])
+            path.insert(0, self.SERVER_URL)
         return '/'.join(path)
 
     def physicalPathFromURL(self, URL):
         """ Convert a URL into a physical path in the current context.
             If the URL makes no sense in light of the current virtual
             hosting context, a ValueError is raised."""
-        other = self.other
         path = filter(None, URL.split( '/'))
 
         if URL.find( '://') >= 0:
@@ -276,15 +276,14 @@ class HTTPRequest(BaseRequest):
             path = path[vhbl:]
         else:
             raise ValueError('Url does not match virtual hosting context')
-        vrpp = other.get('VirtualRootPhysicalPath', ('',))
+        vrpp = getattr(self, 'VirtualRootPhysicalPath', ('',))
         return list(vrpp) + map(unquote, path)
 
     def _resetURLS(self):
-        other = self.other
-        other['URL'] = '/'.join([other['SERVER_URL']] + self._script +
+        self.URL = '/'.join([self.SERVER_URL] + self._script +
                             self._steps)
         for x in self._urls:
-            del self.other[x]
+            delattr(self, x)
         self._urls = ()
 
     def getClientAddr(self):
@@ -312,7 +311,8 @@ class HTTPRequest(BaseRequest):
             # which is guaranteed to exist
             self._locale = locales.getLocale(None, None, None)
 
-    def __init__(self, stdin, environ, response, clean=0):
+    def __init__(self, stdin, environ, response, clean=0, charset=None,
+            unicode_errors=None, decode_param_names=None, **kw):
         self._orig_env = environ
         # Avoid the overhead of scrubbing the environment in the
         # case of request cloning for traversal purposes. If the
@@ -326,128 +326,58 @@ class HTTPRequest(BaseRequest):
             response._auth = 1
             del environ['HTTP_AUTHORIZATION']
 
+        super(HTTPRequest, self).__init__(environ, charset=None,
+                unicode_errors=None, decode_param_names=None, **kw)
+
         self.stdin = stdin
         self.environ = environ
-        get_env = environ.get
-        self.response = response
-        other = self.other = {'RESPONSE': response}
+        self.response = self.RESPONSE = response
+
         self.form = {}
         self.taintedform = {}
         self.steps = []
         self._steps = []
         self._lazies = {}
         self._debug = DebugFlags()
-        # We don't set up the locale initially but just on first access
-        self._locale = _marker
+        self._locale = _marker  # We don't set up the locale initially
+                                # but just on first access
 
-        if 'REMOTE_ADDR' in environ:
-            self._client_addr = environ['REMOTE_ADDR']
-            if ('HTTP_X_FORWARDED_FOR' in environ and
-                self._client_addr in trusted_proxies):
-                # REMOTE_ADDR is one of our trusted local proxies.
-                # Not really very remote at all.  The proxy can tell us the
-                # IP of the real remote client in the forwarded-for header
-                # Skip the proxy-address itself though
-                forwarded_for = [
-                    e.strip()
-                    for e in environ['HTTP_X_FORWARDED_FOR'].split(',')]
-                forwarded_for.reverse()
-                for entry in forwarded_for:
-                    if entry not in trusted_proxies:
-                        self._client_addr = entry
-                        break
-        else:
-            self._client_addr = ''
+    @property
+    def _client_addr(self):
+        return self.client_addr
 
-        ################################################################
-        # Get base info first. This isn't likely to cause
-        # errors and might be useful to error handlers.
-        b = script = get_env('SCRIPT_NAME','').strip()
+    @property
+    def _script(self):
+        return map(quote, filter(None, self.script.split( '/')))
 
-        # _script and the other _names are meant for URL construction
-        self._script = map(quote, filter(None, script.split( '/')))
+    @property
+    def script(self):
+        return self.application_url
 
-        while b and b[-1] == '/':
-            b = b[:-1]
-        p = b.rfind('/')
-        if p >= 0:
-            b = b[:p+1]
-        else:
-            b = ''
-        while b and b[0] == '/':
-            b = b[1:]
+    @property
+    def base(self):
+        return self.script
 
-        server_url = get_env('SERVER_URL',None)
-        if server_url is not None:
-            other['SERVER_URL'] = server_url = server_url.strip()
-        else:
-            if 'HTTPS' in environ and (
-                environ['HTTPS'] == "on" or environ['HTTPS'] == "ON"):
-                protocol = 'https'
-            elif ('SERVER_PORT_SECURE' in environ and
-                environ['SERVER_PORT_SECURE'] == "1"):
-                protocol = 'https'
-            else:
-                protocol = 'http'
+    @property
+    def other(self):
+        return self.environ.setdefault('webob.adhoc_attrs', {})
 
-            if 'HTTP_HOST' in environ:
-                host = environ['HTTP_HOST'].strip()
-                hostname, port = splitport(host)
-
-                # NOTE: some (DAV) clients manage to forget the port. This
-                # can be fixed with the commented code below - the problem
-                # is that it causes problems for virtual hosting. I've left
-                # the commented code here in case we care enough to come
-                # back and do anything with it later.
-                #
-                # if port is None and 'SERVER_PORT' in environ:
-                #     s_port = environ['SERVER_PORT']
-                #     if s_port not in ('80', '443'):
-                #         port = s_port
-
-            else:
-                hostname = environ['SERVER_NAME'].strip()
-                port = environ['SERVER_PORT']
-            self.setServerURL(protocol=protocol, hostname=hostname, port=port)
-            server_url = other['SERVER_URL']
-
-        if server_url[-1:] == '/':
-            server_url = server_url[:-1]
-
-        if b:
-            self.base = "%s/%s" % (server_url,b)
-        else:
-            self.base = server_url
-        while script[:1] == '/':
-            script = script[1:]
-        if script:
-            script = "%s/%s" % (server_url,script)
-        else:
-            script = server_url
-        other['URL'] = self.script = script
-        other['method'] = environ.get('REQUEST_METHOD', 'GET').upper()
-
-        ################################################################
-        # Cookie values should *not* be appended to existing form
-        # vars with the same name - they are more like default values
-        # for names not otherwise specified in the form.
-        cookies = {}
-        taintedcookies = {}
-        k = get_env('HTTP_COOKIE','')
-        if k:
-            parse_cookie(k, cookies)
-            for k, v in cookies.items():
+    @property
+    def taintedcookies(self):
+        if not hasattr(self, '_taintedcookies') or \
+           not self._taintedcookies:
+            self._taintedcookies = {}
+            for key, value in self.cookies:
                 istainted = 0
-                if '<' in k:
-                    k = TaintedString(k)
+                if '<' in self.key:
+                    key = TaintedString(key)
                     istainted = 1
-                if '<' in v:
-                    v = TaintedString(v)
+                if '<' in value:
+                    value = TaintedString(value)
                     istainted = 1
                 if istainted:
-                    taintedcookies[k] = v
-        self.cookies = cookies
-        self.taintedcookies = taintedcookies
+                    self._taintedcookies[key] = value
+        return self._taintedcookies
 
     def processInputs(
         self,
@@ -471,7 +401,7 @@ class HTTPRequest(BaseRequest):
         """
         response = self.response
         environ = self.environ
-        method = environ.get('REQUEST_METHOD','GET')
+        method = self.method
 
         if method != 'GET':
             fp = self.stdin
@@ -479,7 +409,6 @@ class HTTPRequest(BaseRequest):
             fp = None
 
         form = self.form
-        other = self.other
         taintedform = self.taintedform
 
         # If 'QUERY_STRING' is not present in environ
@@ -489,11 +418,11 @@ class HTTPRequest(BaseRequest):
             environ['QUERY_STRING'] = ''
 
         meth = None
-        fs = ZopeFieldStorage(fp=fp,environ=environ,keep_blank_values=1)
+        fs = ZopeFieldStorage(fp=fp, environ=environ, keep_blank_values=1)
         if not hasattr(fs,'list') or fs.list is None:
             if 'HTTP_SOAPACTION' in environ:
                 # Stash XML request for interpretation by a SOAP-aware view
-                other['SOAPXML'] = fs.value
+                self.SOAPXML = fs.value
             # Hm, maybe it's an XML-RPC
             elif ('content-type' in fs.headers and
                 'text/xml' in fs.headers['content-type'] and
@@ -504,7 +433,7 @@ class HTTPRequest(BaseRequest):
                     from ZPublisher import xmlrpc
                 meth, self.args = xmlrpc.parse_input(fs.value)
                 response = xmlrpc.response(response)
-                other['RESPONSE'] = self.response = response
+                self.RESPONSE = self.response = response
                 self.maybe_webdav_client = 0
             else:
                 self._file = fs.file
@@ -1146,7 +1075,7 @@ class HTTPRequest(BaseRequest):
                     path = path[:-1]
             else:
                 path = ''
-            other['PATH_INFO'] = path = "%s/%s" % (path,meth)
+            self.PATH_INFO = path = "%s/%s" % (path,meth)
             self._hacked_path = 1
 
     def postProcessInputs(self):
@@ -1211,6 +1140,10 @@ class HTTPRequest(BaseRequest):
         return object
 
     def clone(self):
+        self.copy()
+
+    def copy(self):
+        self.make_body_seekable()
         # Return a clone of the current request object
         # that may be used to perform object traversal.
         environ = self.environ.copy()
@@ -1222,6 +1155,7 @@ class HTTPRequest(BaseRequest):
         else:
             response = None
         clone = self.__class__(None, environ, response, clean=1)
+        clone.copy_body()
         clone['PARENTS'] = [self['PARENTS'][-1]]
         directlyProvides(clone, *directlyProvidedBy(self))
         return clone
@@ -1233,35 +1167,35 @@ class HTTPRequest(BaseRequest):
         e.g. 'Content-Type', 'CONTENT_TYPE' and 'HTTP_CONTENT_TYPE'
         should all return the Content-Type header, if available.
         """
-        environ = self.environ
-        if not literal:
-            name = name.replace('-', '_').upper()
-        val = environ.get(name, None)
-        if val is not None:
-            return val
-        if name[:5] != 'HTTP_':
-            name = 'HTTP_%s' % name
-        return environ.get(name, default)
+        val = self.headers.get(name, default)
+        if literal and name not in self.environ.keys():
+            return
+        if val is None:
+            name = name.replace('_', '-').upper()
+            val = self.headers.get(name, None)
+        return val
 
-    get_header = getHeader  # BBB
+    get_header = getHeader
 
-    def get(self, key, default=None, returnTaints=0,
+    def __getitem__(self, key, default=_marker, returnTaints=0,
             URLmatch=re.compile('URL(PATH)?([0-9]+)$').match,
             BASEmatch=re.compile('BASE(PATH)?([0-9]+)$').match,
             ):
-        """Get a variable value
+        return self.__getattr__(key, default, returnTaints, URLmatch, BASEmatch)
+    get = __getitem__
 
-        Return a value for the required variable name.
-        The value will be looked up from one of the request data
-        categories. The search order is environment variables,
-        other variables, form data, and then cookies.
+    def __getattr__(self, key, default=None, returnTaints=0,
+            URLmatch=re.compile('URL(PATH)?([0-9]+)$').match,
+            BASEmatch=re.compile('BASE(PATH)?([0-9]+)$').match,
+            ):
 
-        """ #"
-        other = self.other
-        if key in other:
+        if key == 'URL':
+            return self.script
+
+        if key in self.keys():
             if key == 'REQUEST':
                 return self
-            return other[key]
+            return super(HTTPRequest, self).__getattr__(key, default)
 
         if key[:1] == 'U':
             match = URLmatch(key)
@@ -1274,11 +1208,11 @@ class HTTPRequest(BaseRequest):
                 if pathonly:
                     path = [''] + path[:n]
                 else:
-                    path = [other['SERVER_URL']] + path[:n]
+                    path = [self.SERVER_URL] + path[:n]
                 URL = '/'.join(path)
-                if 'PUBLISHED' in other:
+                if 'PUBLISHED' in self:
                     # Don't cache URLs until publishing traversal is done.
-                    other[key] = URL
+                    setattr(self, key, URL)
                     self._urls = self._urls + (key,)
                 return URL
 
@@ -1308,11 +1242,11 @@ class HTTPRequest(BaseRequest):
                 if pathonly:
                     v.insert(0, '')
                 else:
-                    v.insert(0, other['SERVER_URL'])
+                    v.insert(0, self.SERVER_URL)
                 URL = '/'.join(v)
-                if 'PUBLISHED' in other:
+                if 'PUBLISHED' in self:
                     # Don't cache URLs until publishing traversal is done.
-                    other[key] = URL
+                    setattr(self, key, URL)
                     self._urls = self._urls + (key,)
                 return URL
 
@@ -1321,12 +1255,12 @@ class HTTPRequest(BaseRequest):
                 self._file.seek(0)
                 v = self._file.read()
                 self._file.seek(p)
-                self.other[key] = v
+                setattr(self, key, v)
                 return v
 
             if key == 'BODYFILE' and self._file is not None:
                 v = self._file
-                self.other[key] = v
+                setattr(self, key, v)
                 return v
 
         v = self.common.get(key, _marker)
@@ -1346,53 +1280,29 @@ class HTTPRequest(BaseRequest):
         if returnTaints:
             v = self.taintedform.get(key, _marker)
             if v is not _marker:
-                other[key] = v
+                setattr(self, key, v)
                 return v
 
         # Untrusted data *after* trusted data
         v = self.form.get(key, _marker)
         if v is not _marker:
-            other[key] = v
+            setattr(self, key, v)
             return v
 
         # Return tainted data first (marked as suspect)
         if returnTaints:
             v = self.taintedcookies.get(key, _marker)
             if v is not _marker:
-                other[key] = v
+                setattr(self, key, v)
                 return v
 
         # Untrusted data *after* trusted data
         v = self.cookies.get(key, _marker)
         if v is not _marker:
-            other[key] = v
+            setattr(self, key, v)
             return v
 
-        return default
-
-    def __getitem__(self, key, default=_marker, returnTaints=0):
-        v = self.get(key, default, returnTaints=returnTaints)
-        if v is _marker:
-            raise KeyError, key
-        return v
-
-    # Using the getattr protocol to retrieve form values and similar
-    # is discouraged and is likely to be deprecated in the future.
-    # request.get(key) or request[key] should be used instead
-    def __getattr__(self, key, default=_marker, returnTaints=0):
-        v = self.get(key, default, returnTaints=returnTaints)
-        if v is _marker:
-            if key == 'locale':
-                # we only create the _locale on first access, as setting it
-                # up might be slow and we don't want to slow down every
-                # request
-                if self._locale is _marker:
-                    self.setupLocale()
-                return self._locale
-            if key == 'debug':
-                return self._debug
-            raise AttributeError, key
-        return v
+        return super(HTTPRequest, self).__getattr__(key, default)
 
     def set_lazy(self, key, callable):
         self._lazies[key] = callable
@@ -1404,119 +1314,6 @@ class HTTPRequest(BaseRequest):
             return 0
         else:
             return 1
-
-    def keys(self, returnTaints=0):
-        keys = {}
-        keys.update(self.common)
-        keys.update(self._lazies)
-
-        for key in self.environ.keys():
-            if (key in isCGI_NAMEs or key[:5] == 'HTTP_') and (key not in hide_key):
-                keys[key] = 1
-
-        # Cache URLN and BASEN in self.other.
-        # This relies on a side effect of has_key.
-        n = 0
-        while 1:
-            n = n + 1
-            key = "URL%s" % n
-            if not self.has_key(key):
-                break
-
-        n = 0
-        while 1:
-            n = n + 1
-            key = "BASE%s" % n
-            if not self.has_key(key):
-                break
-
-        keys.update(self.other)
-        keys.update(self.cookies)
-        if returnTaints:
-            keys.update(self.taintedcookies)
-        keys.update(self.form)
-        if returnTaints:
-            keys.update(self.taintedform)
-
-        keys = keys.keys()
-        keys.sort()
-
-        return keys
-
-    def __str__(self):
-        result = "<h3>form</h3><table>"
-        row = '<tr valign="top" align="left"><th>%s</th><td>%s</td></tr>'
-        for k,v in _filterPasswordFields(self.form.items()):
-            result = result + row % (escape(k), escape(repr(v)))
-        result = result + "</table><h3>cookies</h3><table>"
-        for k,v in _filterPasswordFields(self.cookies.items()):
-            result = result + row % (escape(k), escape(repr(v)))
-        result = result + "</table><h3>lazy items</h3><table>"
-        for k,v in _filterPasswordFields(self._lazies.items()):
-            result = result + row % (escape(k), escape(repr(v)))
-        result = result + "</table><h3>other</h3><table>"
-        for k,v in _filterPasswordFields(self.other.items()):
-            if k in ('PARENTS','RESPONSE'):
-                continue
-            result = result + row % (escape(k), escape(repr(v)))
-
-        for n in "0123456789":
-            key = "URL%s"%n
-            try:
-                result = result + row % (key, escape(self[key]))
-            except KeyError:
-                pass
-        for n in "0123456789":
-            key = "BASE%s"%n
-            try:
-                result = result + row % (key, escape(self[key]))
-            except KeyError:
-                pass
-
-        result = result + "</table><h3>environ</h3><table>"
-        for k,v in self.environ.items():
-            if k not in hide_key:
-                result = result + row % (escape(k), escape(repr(v)))
-        return result + "</table>"
-
-    def __repr__(self):
-        return "<%s, URL=%s>" % (self.__class__.__name__, self.get('URL'))
-
-    def text(self):
-        result = "FORM\n\n"
-        row = '%-20s %s\n'
-        for k, v in self.form.items():
-            result = result + row % (k, repr(v))
-        result = result + "\nCOOKIES\n\n"
-        for k, v in self.cookies.items():
-            result = result + row % (k, repr(v))
-        result = result + "\nLAZY ITEMS\n\n"
-        for k, v in self._lazies.items():
-            result = result + row % (k, repr(v))
-        result = result + "\nOTHER\n\n"
-        for k, v in self.other.items():
-            if k in ('PARENTS','RESPONSE'):
-                continue
-            result = result + row % (k, repr(v))
-
-        for n in "0123456789":
-            key = "URL%s"%n
-            try:
-                result = result + row % (key, self[key])
-            except KeyError:
-                pass
-        for n in "0123456789":
-            key = "BASE%s"%n
-            try:
-                result = result + row % (key, self[key])
-            except KeyError:
-                pass
-
-        result = result + "\nENVIRON\n\n"
-        for k,v in self.environ.items():
-            if k not in hide_key:
-                result = result + row % (k, v)
-        return result
 
     def _authUserPW(self):
         global base64
@@ -1538,6 +1335,19 @@ class HTTPRequest(BaseRequest):
 
     def getURL(self):
         return self.URL
+
+
+    def __setitem__(self, key, value):
+        self.__setattr__(key, value)
+    set = __setitem__
+
+    @property
+    def _charset(self):
+        adapter = zope.i18n.interfaces.IUserPreferredCharsets(self, None)
+        if adapter is None:
+            adapter = zope.publisher.http.HTTPCharsets(self)
+        charsets = adapter.getPreferredCharsets() or [default_encoding]
+        return charsets[0]
 
 class TaintRequestWrapper:
     def __init__(self, req):
