@@ -78,4 +78,18 @@ class Folder(
         if id is not None:
             self.id = str(id)
 
+    def __allow_access_to_unprotected_subobjects__(self, name, value=None):
+        """        
+        Explicitly enable access to property sheet items.
+        """
+
+        allowed_names = self.propertyIds()
+
+        if name in allowed_names:
+            return True
+        
+        return False
+
+
+
 InitializeClass(Folder)
