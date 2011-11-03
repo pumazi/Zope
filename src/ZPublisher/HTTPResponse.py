@@ -22,6 +22,7 @@ import sys
 import types
 from urllib import quote
 import zlib
+import webob
 
 from zope.event import notify
 from zExceptions import Redirect
@@ -43,59 +44,10 @@ default_encoding = 'utf-8'
 APPEND_TRACEBACKS = 0
 
 
-status_reasons = {
-100: 'Continue',
-101: 'Switching Protocols',
-102: 'Processing',
-200: 'OK',
-201: 'Created',
-202: 'Accepted',
-203: 'Non-Authoritative Information',
-204: 'No Content',
-205: 'Reset Content',
-206: 'Partial Content',
-207: 'Multi-Status',
-300: 'Multiple Choices',
-301: 'Moved Permanently',
-302: 'Moved Temporarily',
-303: 'See Other',
-304: 'Not Modified',
-305: 'Use Proxy',
-307: 'Temporary Redirect',
-400: 'Bad Request',
-401: 'Unauthorized',
-402: 'Payment Required',
-403: 'Forbidden',
-404: 'Not Found',
-405: 'Method Not Allowed',
-406: 'Not Acceptable',
-407: 'Proxy Authentication Required',
-408: 'Request Time-out',
-409: 'Conflict',
-410: 'Gone',
-411: 'Length Required',
-412: 'Precondition Failed',
-413: 'Request Entity Too Large',
-414: 'Request-URI Too Large',
-415: 'Unsupported Media Type',
-416: 'Requested range not satisfiable',
-417: 'Expectation Failed',
-422: 'Unprocessable Entity',
-423: 'Locked',
-424: 'Failed Dependency',
-500: 'Internal Server Error',
-501: 'Not Implemented',
-502: 'Bad Gateway',
-503: 'Service Unavailable',
-504: 'Gateway Time-out',
-505: 'HTTP Version not supported',
-507: 'Insufficient Storage',
-}
-
 status_codes = {}
 # Add mappings for builtin exceptions and
 # provide text -> error code lookups.
-for key, val in status_reasons.items():
+for key, val in webob.util.status_reasons.items():
     status_codes[''.join(val.split(' ')).lower()] = key
     status_codes[val.lower()] = key
     status_codes[key] = key
@@ -110,13 +62,6 @@ status_codes['resourcelockederror'] = 423
 
 
 start_of_header_search = re.compile('(<head[^>]*>)', re.IGNORECASE).search
-
-_gzip_header = ("\037\213" # magic
-                "\010" # compression method
-                "\000" # flags
-                "\000\000\000\000" # time
-                "\002"
-                "\377")
 
 uncompressableMimeMajorTypes = ('image',)   # these mime major types should
                                             # not be gzip content encoded
@@ -133,7 +78,7 @@ _CRLF = re.compile(r'\r[\n]?')
 def _scrubHeader(name, value):
     return ''.join(_CRLF.split(str(name))), ''.join(_CRLF.split(str(value)))
 
-class HTTPResponse(BaseResponse):
+class HTTPResponse(webob.Response, BaseResponse):
     """ An object representation of an HTTP response.
 
     The Response type encapsulates all possible responses to HTTP
@@ -151,7 +96,7 @@ class HTTPResponse(BaseResponse):
 
     If stream oriented output is used, then the response object
     passed into the object must be used.
-    """ #'
+    """
 
     body = ''
     base = ''
@@ -166,32 +111,31 @@ class HTTPResponse(BaseResponse):
     # 2 - ignore accept-encoding (i.e. force)
     use_HTTP_content_compression = 0
 
-    def __init__(self,
-                 body='',
-                 status=200,
-                 headers=None,
-                 stdout=sys.stdout,
-                 stderr=sys.stderr,
-                ):
+    def __init__(self, body=None, status=None, headers=None, stdout=sys.stdout,
+                 stderr=sys.stderr, app_iter=None, content_type=None,
+                 conditional_response=None, **kw):
         """ Create a new response using the given values.
         """
+
         if headers is None:
-            headers = {}
-        self.headers = headers
+            _headers = {}
+        elif type(headers) is list:
+            _headers = {}
+            for name, value in headers:
+                _headers[name] = value
+        else: 
+            _headers = headers
+
+        super(HTTPResponse, self).__init__(body, status, _headers.items(),
+                app_iter, content_type, conditional_response, **kw)
+
         self.accumulated_headers = []
-
-        if status == 200:
-            self.status = 200
-            self.errmsg = 'OK'
-        else:
-            self.setStatus(status)
-
-        if body:
-            self.setBody(body)
-
         self.cookies = {}
         self.stdout = stdout
         self.stderr = stderr
+
+        if not self._headerlist and self.content_type:
+            self.headers = {}
 
     def retry(self):
         """ Return a cloned response object to be used in a retry attempt.
@@ -228,8 +172,8 @@ class HTTPResponse(BaseResponse):
         self.status = status
 
         if reason is None:
-            if status in status_reasons:
-                reason = status_reasons[status]
+            if status in webob.util.status_reasons:
+                reason = webob.util.status_reasons[status]
             else:
                 reason = 'Unknown'
 
@@ -385,7 +329,7 @@ class HTTPResponse(BaseResponse):
                    ):
 
         # Only insert a base tag if content appears to be html.
-        content_type = self.headers.get('content-type', '').split(';')[0]
+        content_type = self.content_type
         if content_type and (content_type != 'text/html'):
             return
 
@@ -485,7 +429,7 @@ class HTTPResponse(BaseResponse):
             else:
                 self.body = body
 
-        content_type = self.headers.get('content-type')
+        content_type = self.content_type
 
         # Some browsers interpret certain characters in Latin 1 as html
         # special characters. These cannot be removed by html_quote,
@@ -523,7 +467,7 @@ class HTTPResponse(BaseResponse):
                 startlen = len(body)
                 co = zlib.compressobj(6,zlib.DEFLATED,-zlib.MAX_WBITS,
                                       zlib.DEF_MEM_LEVEL,0)
-                chunks = [_gzip_header, co.compress(body),
+                chunks = [webob.response._gzip_header, co.compress(body),
                           co.flush(),
                           struct.pack("<ll",zlib.crc32(body),startlen)]
                 z = "".join(chunks)
@@ -604,23 +548,6 @@ class HTTPResponse(BaseResponse):
 
         return str(location)
 
-    # The following two methods are part of a private protocol with the
-    # publisher for handling fatal import errors and TTW shutdown requests.
-    _shutdown_flag = None
-    def _requestShutdown(self, exitCode=0):
-        """ Request that the server shut down with exitCode after fulfilling
-           the current request.
-        """
-        import ZServer
-        ZServer.exit_code = exitCode
-        self._shutdown_flag = 1
-
-    def _shutdownRequested(self):
-        """ Returns true if this request requested a server shutdown.
-        """
-        return self._shutdown_flag is not None
-
-
     def _encode_unicode(self,body,
                         charset_re=re.compile(
                            r'(?:application|text)/[-+0-9a-z]+\s*;\s*' +
@@ -657,10 +584,6 @@ class HTTPResponse(BaseResponse):
         body = body.encode(default_encoding, 'replace')
         body = fix_xml_preamble(body, default_encoding)
         return body
-
-    # deprecated
-    def quoteHTML(self, text):
-        return escape(text, 1)
 
     def _traceback(self, t, v, tb, as_html=1):
         tb = format_exception(t, v, tb, as_html=as_html)
