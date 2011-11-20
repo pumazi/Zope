@@ -1077,8 +1077,8 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(headers,
                          [('X-Powered-By', 'Zope (www.zope.org), '
                                            'Python (www.python.org)'),
+                          ('Content-Type', 'text/html; charset=utf-8'),
                           ('Content-Length', '4'),
-                          ('Content-Type', 'text/plain; charset=utf-8'),
                          ])
 
     def test___str__already_wrote(self):
