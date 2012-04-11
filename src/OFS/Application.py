@@ -59,13 +59,6 @@ class Application(ApplicationDefaultPermissions,
     __error_log__ = None
     isTopLevelPrincipiaApplicationObject = 1
 
-    manage_options=((
-            Folder.Folder.manage_options[0],
-            Folder.Folder.manage_options[1],
-            {'label': 'Control Panel', 'action': 'Control_Panel/manage_main'}, ) +
-                    Folder.Folder.manage_options[2:]
-                    )
-
     p_ = misc_.p_
     misc_ = misc_.misc_
     _reserved_names = ('Control_Panel', )
@@ -147,6 +140,7 @@ class Application(ApplicationDefaultPermissions,
         self.dav__init(REQUEST, RESPONSE)
         raise Forbidden('This resource cannot be moved.')
 
+    # RRR zmi-killer
     def absolute_url(self, relative=0):
         """The absolute URL of the root object is BASE1 or "/".
         """
@@ -157,6 +151,7 @@ class Application(ApplicationDefaultPermissions,
         except (AttributeError, KeyError):
             return '/'
 
+    # RRR zmi-killer
     def absolute_url_path(self):
         """The absolute URL path of the root object is BASEPATH1 or "/".
         """
@@ -165,6 +160,7 @@ class Application(ApplicationDefaultPermissions,
         except (AttributeError, KeyError):
             return '/'
 
+    # RRR zmi-killer
     def virtual_url_path(self):
         """The virtual URL path of the root object is empty.
         """
