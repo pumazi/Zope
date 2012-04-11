@@ -11,31 +11,31 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Component browser views
+"""Components manager(s)
 """
 
-from Products.Five.browser import BrowserView
 from Products.Five.component import enableSite, disableSite
-from Products.Five.component.interfaces import IObjectManagerSite
+from Products.Five.component.interfaces import (
+    IObjectManagerSite, IObjectManagerSiteManager,
+    )
 
+from zope.interface import implements
 from zope.component.globalregistry import base
 from zope.component.persistentregistry import PersistentComponents
 from zope.site.hooks import setSite
 
 
-class ObjectManagerSiteView(BrowserView):
+class ObjectManagerSiteManager(object):
+    implements(IObjectManagerSiteManager)
 
-    def update(self):
-        form = self.request.form
-        if form.has_key('MAKESITE'):
-            self.makeSite()
-        elif form.has_key('UNMAKESITE'):
-            self.unmakeSite()
+    def __init__(self, context):
+        self.context = context
 
-    def isSite(self):
+    @property
+    def is_site(self):
         return IObjectManagerSite.providedBy(self.context)
 
-    def makeSite(self):
+    def make_site(self):
         if IObjectManagerSite.providedBy(self.context):
             raise ValueError('This is already a site')
 
@@ -47,8 +47,8 @@ class ObjectManagerSiteView(BrowserView):
         components.__bases__ = (base,)
         self.context.setSiteManager(components)
 
-    def unmakeSite(self):
-        if not self.isSite():
+    def unmake_site(self):
+        if not self.is_site:
             raise ValueError('This is not a site')
 
         disableSite(self.context)

@@ -14,11 +14,10 @@
       handler="zope.site.site.clearThreadSiteSubscriber"
       />
 
-  <browser:page
+  <adapter
       for="OFS.interfaces.IObjectManager"
-      name="components.html"
-      class=".browser.ObjectManagerSiteView"
-      template="components.pt"
+      provides=".interfaces.IObjectManagerSiteManager"
+      factory=".components.ObjectManagerSiteManager"
       permission="five.ManageSite"
       />
 

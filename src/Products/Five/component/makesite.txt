@@ -28,23 +28,19 @@ Making a site
     >>> uf = app.acl_users
     >>> _ignored = uf._doAddUser('manager', 'r00t', ['Manager'], [])
 
-Create the test browser we'll be using:
-
-    >>> from Testing.testbrowser import Browser
-    >>> browser = Browser()
-    >>> browser.addHeader('Authorization', 'Basic manager:r00t')
-
 Let's add a folder:
 
-    >>> browser.open('http://localhost/manage_addProduct/OFSP/folderAdd')
-    >>> browser.getControl(name='id').value = 'folder'
-    >>> browser.getControl('Add').click()
-    >>> browser.getLink('folder').click()
+    >>> from OFS.Folder import manage_addFolder
+    >>> manage_addFolder(app, id='folder')
+    >>> folder = app.folder
 
-We can turn it into a site by using the ``components.html`` view:
+We can turn it into a site by using the ``ObjectManagerSiteManager`` adapter:
 
-    >>> browser.open('http://localhost/folder/components.html')
-    >>> browser.getControl('Make site').click()
+    >>> from Products.Five.component.interfaces import IObjectManagerSiteManager
+    >>> omsm = IObjectManagerSiteManager(folder)
+    >>> omsm.is_site
+    False
+    >>> omsm.make_site()
 
 Now we ensure that the folder has been turned into a site:
 
@@ -78,6 +74,9 @@ traversal:
 
 Browse to our local view and check that it works:
 
+    >>> from Testing.testbrowser import Browser
+    >>> browser = Browser()
+    >>> browser.addHeader('Authorization', 'Basic manager:r00t')
     >>> browser.handleErrors = False
     >>> browser.open('http://localhost/folder/testview.html')
     >>> print browser.contents
@@ -89,8 +88,9 @@ Unmaking a site
 Folderish sites can be reverted back to standard folders also using
 the ``components.html`` view:
 
-    >>> browser.open('http://localhost/folder/components.html')
-    >>> browser.getControl('Unmake site').click()
+    >>> omsm.unmake_site()
+    >>> omsm.is_site
+    False
 
 Ensure that its local components are no longer available:
 

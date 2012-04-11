@@ -13,9 +13,22 @@
 ##############################################################################
 """Component interfaces
 """
-
+from zope.interface import Interface, Attribute
 from zope.location.interfaces import ISite
 from OFS.interfaces import IObjectManager
 
+
 class IObjectManagerSite(IObjectManager, ISite):
     """Object manager that is also a site."""
+
+
+class IObjectManagerSiteManager(Interface):
+    """Adapter to enable/disable an objectmanger as a site."""
+
+    is_site = Attribute("Is this object already a site?")
+
+    def make_site():
+        """Make the object a site."""
+
+    def unmake_site(self):
+        """Make the site object a non-site object."""

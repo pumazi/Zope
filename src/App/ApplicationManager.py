@@ -18,6 +18,7 @@ import sys
 from thread import get_ident
 import time
 import urllib
+import warnings
 
 from AccessControl.class_init import InitializeClass
 from AccessControl.requestmethod import requestmethod
@@ -42,24 +43,9 @@ LOG = getLogger('ApplicationManager')
 class DatabaseManager(Item, Implicit):
     """Database management (legacy)
     """
-    manage = manage_main = DTMLFile('dtml/dbMain', globals())
-    manage_main._setName('manage_main')
     id = 'DatabaseManagement'
     name = title = 'Database Management'
     meta_type = 'Database Management'
-
-    manage_options=((
-        {'label':'Database', 'action':'manage_main'},
-        {'label':'Activity', 'action':'manage_activity'},
-        {'label':'Cache Parameters', 'action':'manage_cacheParameters'},
-        {'label':'Flush Cache', 'action':'manage_cacheGC'},
-        ))
-
-    # These need to be here rather to make tabs work correctly. This
-    # needs to be revisited.
-    manage_activity = DTMLFile('dtml/activity', globals())
-    manage_cacheParameters = DTMLFile('dtml/cacheParameters', globals())
-    manage_cacheGC = DTMLFile('dtml/cacheGC', globals())
 
 InitializeClass(DatabaseManager)
 
@@ -80,12 +66,6 @@ class DatabaseChooser(SimpleItem):
     meta_type = 'Database Management'
     name = title = 'Database Management'
     isPrincipiaFolderish = 1
-
-    manage_options=(
-        {'label':'Databases', 'action':'manage_main'},
-        )
-
-    manage_main = PageTemplateFile('www/chooseDatabase.pt', globals())
 
     def __init__(self, id):
         self.id = id
@@ -133,18 +113,9 @@ _v_rst = None
 class DebugManager(Item, Implicit):
     """ Debug and profiling information
     """
-    manage = manage_main = DTMLFile('dtml/debug', globals())
-    manage_main._setName('manage_main')
     id ='DebugInfo'
     name = title = 'Debug Information'
     meta_type = name
-
-    manage_options=((
-        {'label':'Debugging Info', 'action':'manage_main'},
-        {'label':'Profiling', 'action':'manage_profile'},
-        ))
-
-    manage_debug = DTMLFile('dtml/debug', globals())
 
     def refcount(self, n=None, t=(type(Implicit), )):
         # return class reference info
@@ -210,8 +181,7 @@ class DebugManager(Item, Implicit):
 
     # Profiling support
 
-    manage_profile = DTMLFile('dtml/profile', globals())
-
+    # ??? manage_profile removed... Is this still needed?
     def manage_profile_stats(self, sort='time',
                              limit=200, stripDirs=1, mode='stats'):
         """Return profile data if available
@@ -228,11 +198,13 @@ class DebugManager(Item, Implicit):
         getattr(stats, 'print_%s' % mode)(limit)
         return output.getvalue()
 
+    # ??? manage_profile removed... Is this still needed?
     def manage_profile_reset(self):
         """ Reset profile data
         """
         Publish._pstat = sys._ps_ = None
 
+    # ??? manage_profile removed... Is this still needed?
     def manage_getSysPath(self):
         return list(sys.path)
 
@@ -245,25 +217,7 @@ class ApplicationManager(Folder, CacheManager):
     __roles__ = ('Manager',)
     isPrincipiaFolderish = 1
     Database = DatabaseChooser('Database') #DatabaseManager()
-    DebugInfo = DebugManager()
     DavLocks = DavLockManager()
-
-    manage = manage_main = DTMLFile('dtml/cpContents', globals())
-    manage_main._setName('manage_main')
-
-    _objects=(
-        {'id': 'Database',
-         'meta_type': Database.meta_type},
-        {'id': 'DavLocks',
-         'meta_type': DavLocks.meta_type},
-        {'id': 'DebugInfo',
-         'meta_type': DebugInfo.meta_type},
-        )
-
-    manage_options=(
-        ({'label':'Contents', 'action':'manage_main'}, ) +
-        UndoSupport.manage_options
-        )
 
     id = 'Control_Panel'
     name = title = 'Control Panel'
@@ -271,13 +225,6 @@ class ApplicationManager(Folder, CacheManager):
 
     process_id = os.getpid()
     process_start = int(time.time())
-
-    # Disable some inappropriate operations
-    manage_addObject = None
-    manage_delObjects = None
-    manage_addProperty = None
-    manage_editProperties = None
-    manage_delProperties = None
 
     def _canCopy(self, op=0):
         return 0
@@ -332,10 +279,16 @@ class ApplicationManager(Folder, CacheManager):
             return '%.1fM' % (s/1048576.0)
         return '%.1fK' % (s/1024.0)
 
-    @requestmethod('POST')
+    # RRR zmi-killer
     def manage_pack(self, days=0, REQUEST=None, _when=None):
         """Pack the database"""
+        warnings.warn("manage_pack will be removed and will not function "\
+                      "correctly with a REQUEST. Use 'pack' instead.",
+                      RuntimeWarning)
+        return self.pack(days=days, _when=_when)
 
+    def pack(self, days=0, _when=None):
+        """Pack the database"""
         if _when is None:
             _when = time.time()
 
@@ -343,9 +296,6 @@ class ApplicationManager(Folder, CacheManager):
 
         db = self._p_jar.db()
         t = db.pack(t)
-        if REQUEST is not None:
-            REQUEST['RESPONSE'].redirect(
-                REQUEST['URL1'] + '/manage_workspace')
         return t
 
     def getINSTANCE_HOME(self):
@@ -376,3 +326,4 @@ class AltDatabaseManager(DatabaseManager, CacheManager):
     db_name = ApplicationManager.db_name.im_func
     db_size = ApplicationManager.db_size.im_func
     manage_pack = ApplicationManager.manage_pack.im_func
+    pack = ApplicationManager.pack.im_func
