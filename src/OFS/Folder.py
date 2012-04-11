@@ -30,6 +30,7 @@ from OFS.SimpleItem import Item
 
 manage_addFolderForm=DTMLFile('dtml/folderAdd', globals())
 
+# RRR zmi-killer
 def manage_addFolder(self, id, title='',
                      createPublic=0,
                      createUserF=0,
@@ -41,7 +42,8 @@ def manage_addFolder(self, id, title='',
     self._setObject(id, ob)
     ob = self._getOb(id)
     if REQUEST is not None:
-        return self.manage_main(self, REQUEST, update_menu=1)
+        warnings.warn("This function/method hybrid thing no longer supports "\
+                      "the 'REQUEST' argument.", RuntimeWarning)
 
 
 class Folder(
@@ -62,16 +64,6 @@ class Folder(
     meta_type='Folder'
 
     _properties=({'id':'title', 'type': 'string','mode':'wd'},)
-
-    manage_options=(
-        ObjectManager.manage_options +
-        ({'label': 'View', 'action': ''}, ) +
-        PropertyManager.manage_options +
-        RoleManager.manage_options +
-        Item.manage_options +
-        FindSupport.manage_options
-        )
-
     __ac_permissions__=()
 
     def __init__(self, id=None):
