@@ -484,11 +484,6 @@ class IObjectManager(IZopeObject, ICopyContainer, INavigation, IManageable,
         title=u"Is an object manager",
         )
 
-    manage_main = Attribute(""" """)
-    manage_index_main = Attribute(""" """)
-    manage_addProduct = Attribute(""" """)
-    manage_importExportForm = Attribute(""" """)
-
     def all_meta_types(interfaces=None):
         """
         """
@@ -556,22 +551,9 @@ class IObjectManager(IZopeObject, ICopyContainer, INavigation, IManageable,
         and containing objects.
         """
 
-    def manage_delObjects(ids=[], REQUEST=None):
-        """Delete a subordinate object
-
-        The objects specified in 'ids' get deleted.
-        """
-
     def tpValues():
         """Return a list of subobjects, used by tree tag.
         """
-
-    def manage_exportObject(id='', download=None, toxml=None,
-                            RESPONSE=None,REQUEST=None):
-        """Exports an object to a file and returns that file."""
-
-    def manage_importObject(file, REQUEST=None, set_owner=1):
-        """Import an object from a file"""
 
     def _importObjectFromFile(filepath, verify=1, set_owner=1):
         """

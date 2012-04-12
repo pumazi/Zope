@@ -28,7 +28,7 @@ class CacheTests(unittest.TestCase):
         self.assertTrue(managersExist(root.child.child_content))
 
         # Now we delete the cache in the child folder
-        root.child.manage_delObjects(['child_cache'])
+        root.child._delObject('child_cache')
 
         # The parent_cache should still trigger managersExist
         self.assertTrue(managersExist(root.child.child_content))

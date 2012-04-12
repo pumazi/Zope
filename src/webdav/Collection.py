@@ -130,7 +130,7 @@ class Collection(Resource):
             # There were no conflicts, so we can go ahead and delete
             # ajung: additional check if we really could delete the collection
             # (Collector #2196)
-            if parent.manage_delObjects([name],REQUEST=None)  is None:
+            if parent._delObject(name)  is None:
                 RESPONSE.setStatus(204)
             else:
                 RESPONSE.setStatus(403)

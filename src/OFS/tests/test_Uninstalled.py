@@ -135,7 +135,7 @@ class TestsIntegratedBroken(base.TestCase):
         self.assertEqual(state, {'id': 'tr'})
 
         # cleanup
-        app.manage_delObjects('tr')
+        app._delObject('tr')
         transaction.commit()
         # check that object is not left over
         app = base.app()

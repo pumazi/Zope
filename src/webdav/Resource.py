@@ -281,7 +281,7 @@ class Resource(Base, LockableItem):
         # so we can delete the lock now.
         # ajung: Fix for Collector # 2196
 
-        if parent.manage_delObjects([name],REQUEST=None)  is None:
+        if parent._delObject(name)  is None:
             RESPONSE.setStatus(204)
         else:
 

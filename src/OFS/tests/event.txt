@@ -171,7 +171,7 @@ called correctly::
 And when we delete the object, manage_beforeDelete is also called and
 events are sent::
 
-  >>> folder.manage_delObjects('lassie')
+  >>> folder._delObject('lassie')
   ObjectWillBeRemovedEvent lassie
   old manage_beforeDelete lassie lassie folder
   ObjectRemovedEvent lassie
@@ -305,7 +305,7 @@ everything happens correctly::
   ObjectAddedEvent dogbert
   ContainerModifiedEvent folder
   'dogbert'
-  >>> folder.manage_delObjects('dogbert')
+  >>> folder._delObject('dogbert')
   ObjectWillBeRemovedEvent dogbert
   ObjectRemovedEvent dogbert
   ContainerModifiedEvent folder

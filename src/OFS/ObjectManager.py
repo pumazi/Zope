@@ -47,7 +47,6 @@ from DateTime import DateTime
 from Persistence import Persistent
 from webdav.Collection import Collection
 from webdav.Lockable import ResourceLockedError
-from webdav.NullResource import NullResource
 from zExceptions import BadRequest
 from zope.interface import implements
 from zope.component.interfaces import ComponentLookupError
@@ -117,6 +116,7 @@ def checkValidId(self, id, allow_dup=0):
                 # flag is set.
             elif flags & UNIQUE:
                 raise BadRequest, ('The id "%s" is reserved.' % id)
+    # XXX zmi-killer
     if id == 'REQUEST':
         raise BadRequest, 'REQUEST is a reserved name.'
     if '/' in id:
@@ -164,18 +164,9 @@ class ObjectManager(CopyContainer,
 
     _objects = ()
 
-    security.declareProtected(view_management_screens, 'manage_main')
-    manage_main=DTMLFile('dtml/main', globals())
+    isAnObjectManager=1  # XXX We have interfaces for this type of thing.
 
-    manage_index_main=DTMLFile('dtml/index_main', globals())
-
-    manage_options=(
-        {'label':'Contents', 'action':'manage_main'},
-        )
-
-    isAnObjectManager=1
-
-    isPrincipiaFolderish=1
+    isPrincipiaFolderish=1  # XXX We have interfaces for this type of thing.
 
     has_order_support = 0 # See OrderSupport.py
 
@@ -490,43 +481,6 @@ class ObjectManager(CopyContainer,
             x=x+1
         return vals
 
-
-    manage_addProduct = ProductDispatcher()
-
-    security.declareProtected(delete_objects, 'manage_delObjects')
-    def manage_delObjects(self, ids=[], REQUEST=None):
-        """Delete a subordinate object
-
-        The objects specified in 'ids' get deleted.
-        """
-        if type(ids) is type(''): ids=[ids]
-        if not ids:
-            return MessageDialog(title='No items specified',
-                   message='No items were specified!',
-                   action ='./manage_main',)
-        try:    p=self._reserved_names
-        except: p=()
-        for n in ids:
-            if n in p:
-                return MessageDialog(title='Not Deletable',
-                       message='<EM>%s</EM> cannot be deleted.' % escape(n),
-                       action ='./manage_main',)
-        while ids:
-            id=ids[-1]
-            v=self._getOb(id, self)
-
-            if v.wl_isLocked():
-                raise ResourceLockedError, (
-                    'Object "%s" is locked via WebDAV' % v.getId())
-
-            if v is self:
-                raise BadRequest, '%s does not exist' % escape(ids[-1])
-            self._delObject(id)
-            del ids[-1]
-        if REQUEST is not None:
-            return self.manage_main(self, REQUEST, update_menu=1)
-
-
     def tpValues(self):
         # Return a list of subobjects, used by tree tag.
         r=[]
@@ -550,72 +504,7 @@ class ObjectManager(CopyContainer,
                     r.append(o)
         return r
 
-    security.declareProtected(import_export_objects, 'manage_exportObject')
-    def manage_exportObject(self, id='', download=None, toxml=None,
-                            RESPONSE=None,REQUEST=None):
-        """Exports an object to a file and returns that file."""
-        if not id:
-            # can't use getId() here (breaks on "old" exported objects)
-            id=self.id
-            if hasattr(id, 'im_func'): id=id()
-            ob=self
-        else: ob=self._getOb(id)
-
-        suffix=toxml and 'xml' or 'zexp'
-
-        if download:
-            f=StringIO()
-            if toxml:
-                exportXML(ob._p_jar, ob._p_oid, f)
-            else:
-                ob._p_jar.exportFile(ob._p_oid, f)
-            if RESPONSE is not None:
-                RESPONSE.setHeader('Content-type','application/data')
-                RESPONSE.setHeader('Content-Disposition',
-                                   'inline;filename=%s.%s' % (id, suffix))
-            return f.getvalue()
-
-        cfg = getConfiguration()
-        f = os.path.join(cfg.clienthome, '%s.%s' % (id, suffix))
-        if toxml:
-            exportXML(ob._p_jar, ob._p_oid, f)
-        else:
-            ob._p_jar.exportFile(ob._p_oid, f)
-
-        if REQUEST is not None:
-            return self.manage_main(self, REQUEST,
-                manage_tabs_message=
-                '<em>%s</em> successfully exported to <em>%s</em>' % (id,f),
-                title = 'Object exported')
-
-
-    security.declareProtected(import_export_objects, 'manage_importExportForm')
-    manage_importExportForm=DTMLFile('dtml/importExport',globals())
-
-    security.declareProtected(import_export_objects, 'manage_importObject')
-    def manage_importObject(self, file, REQUEST=None, set_owner=1):
-        """Import an object from a file"""
-        dirname, file=os.path.split(file)
-        if dirname:
-            raise BadRequest, 'Invalid file name %s' % escape(file)
-
-        for impath in self._getImportPaths():
-            filepath = os.path.join(impath, 'import', file)
-            if os.path.exists(filepath):
-                break
-        else:
-            raise BadRequest, 'File does not exist: %s' % escape(file)
-
-        self._importObjectFromFile(filepath, verify=not not REQUEST,
-                                   set_owner=set_owner)
-
-        if REQUEST is not None:
-            return self.manage_main(
-                self, REQUEST,
-                manage_tabs_message='<em>%s</em> successfully imported' % id,
-                title='Object imported',
-                update_menu=1)
-
+    # XXX This doesn't belong on the class.
     def _importObjectFromFile(self, filepath, verify=1, set_owner=1):
         # locate a valid connection
         connection=self._p_jar
@@ -636,6 +525,7 @@ class ObjectManager(CopyContainer,
         ob=self._getOb(id)
         ob.manage_changeOwnershipType(explicit=0)
 
+    # XXX This doesn't belong on the class.
     def _getImportPaths(self):
         cfg = getConfiguration()
         paths = []
@@ -645,6 +535,7 @@ class ObjectManager(CopyContainer,
             paths.append(cfg.clienthome)
         return paths
 
+    # XXX This doesn't belong on the class.
     def list_imports(self):
         listing = []
         for impath in self._getImportPaths():
@@ -656,112 +547,12 @@ class ObjectManager(CopyContainer,
         listing.sort()
         return listing
 
-    # FTP support methods
-
-    security.declareProtected(ftp_access, 'manage_FTPlist')
-    def manage_FTPlist(self, REQUEST):
-        """Directory listing for FTP.
-        """
-        out=()
-
-        # check to see if we are being acquiring or not
-        ob=self
-        while 1:
-            if is_acquired(ob):
-                raise ValueError('FTP List not supported on acquired objects')
-            if not hasattr(ob,'aq_parent'):
-                break
-            ob=ob.aq_parent
-
-        files = list(self.objectItems())
-
-        # recursive ride through all subfolders (ls -R) (ajung)
-
-        if REQUEST.environ.get('FTP_RECURSIVE',0) == 1:
-
-            all_files = copy.copy(files)
-            for f in files:
-                if hasattr(aq_base(f[1]), 'isPrincipiaFolderish') and f[1].isPrincipiaFolderish:
-                    all_files.extend(findChildren(f[1]))
-            files = all_files
-
-        # Perform globbing on list of files (ajung)
-
-        globbing = REQUEST.environ.get('GLOBBING','')
-        if globbing :
-            files = [x for x in files if fnmatch.fnmatch(x[0],globbing)]
-
-        files.sort()
-
-        if not (hasattr(self,'isTopLevelPrincipiaApplicationObject') and
-                self.isTopLevelPrincipiaApplicationObject):
-            files.insert(0,('..',self.aq_parent))
-        files.insert(0, ('.', self))
-        for k,v in files:
-            # Note that we have to tolerate failure here, because
-            # Broken objects won't stat correctly. If an object fails
-            # to be able to stat itself, we will ignore it, but log
-            # the error.
-            try:
-                stat=marshal.loads(v.manage_FTPstat(REQUEST))
-            except:
-                LOG.error("Failed to stat file '%s'" % k,
-                          exc_info=sys.exc_info())
-                stat=None
-            if stat is not None:
-                out=out+((k,stat),)
-        return marshal.dumps(out)
-
-    security.declareProtected(ftp_access, 'manage_hasId')
-    def manage_hasId(self, REQUEST):
-        """ check if the folder has an object with REQUEST['id'] """
-
-        if not REQUEST['id'] in self.objectIds():
-            raise KeyError(REQUEST['id'])
-
-    security.declareProtected(ftp_access, 'manage_FTPstat')
-    def manage_FTPstat(self,REQUEST):
-        """Psuedo stat, used by FTP for directory listings.
-        """
-        mode=0040000
-        from AccessControl.User import nobody
-        # check to see if we are acquiring our objectValues or not
-        if not (len(REQUEST.PARENTS) > 1 and
-                self.objectValues() == REQUEST.PARENTS[1].objectValues()):
-            try:
-                if getSecurityManager().validate(
-                    None, self, 'manage_FTPlist', self.manage_FTPlist
-                    ):
-                    mode=mode | 0770
-            except: pass
-
-            if nobody.allowed(
-                self,
-                getRoles(self, 'manage_FTPlist', self.manage_FTPlist, ())):
-                mode=mode | 0007
-        if hasattr(aq_base(self), '_p_mtime'):
-            mtime = DateTime(self._p_mtime).timeTime()
-        else:
-            mtime = time.time()
-        # get owner and group
-        owner=group='Zope'
-        for user, roles in self.get_local_roles():
-            if 'Owner' in roles:
-                owner=user
-                break
-        return marshal.dumps((mode,0,0,1,owner,group,0,mtime,mtime,mtime))
-
     def __delitem__(self, name):
-        return self.manage_delObjects(ids=[name])
+        return self._delObject(name)
 
     def __getitem__(self, key):
         v=self._getOb(key, None)
         if v is not None: return v
-        if hasattr(self, 'REQUEST'):
-            request=self.REQUEST
-            method=request.get('REQUEST_METHOD', 'GET')
-            if request.maybe_webdav_client and not method in ('GET', 'POST'):
-                return NullResource(self, key, request).__of__(self)
         raise KeyError, key
 
     def __setitem__(self, key, value):

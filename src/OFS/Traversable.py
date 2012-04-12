@@ -46,6 +46,7 @@ class Traversable:
 
     security = ClassSecurityInfo()
 
+    # RRR zmi-killer
     security.declarePublic('absolute_url')
     def absolute_url(self, relative=0):
         """Return the absolute URL of the object.
@@ -194,6 +195,10 @@ class Traversable:
                 validate(None, None, None, obj) # may raise Unauthorized
         else:
             obj = self
+        if hasattr(self, 'REQUEST'):
+            request = aq_acquire(self, 'REQUEST')
+        else:
+            request = None
 
         # import time ordering problem
         from webdav.NullResource import NullResource
@@ -215,14 +220,15 @@ class Traversable:
                         obj = next
                         continue
 
+                # if name == 'acquirer':
+                #     import ipdb; ipdb.set_trace()
                 bobo_traverse = getattr(obj, '__bobo_traverse__', None)
                 try:
                     if name and name[:1] in '@+' and name != '+' and nsParse(name)[1]:
                         # Process URI segment parameters.
                         ns, nm = nsParse(name)
                         try:
-                            next = namespaceLookup(
-                                ns, nm, obj, aq_acquire(self, 'REQUEST'))
+                            next = namespaceLookup(ns, nm, obj, request)
                             if IAcquirer.providedBy(next):
                                 next = next.__of__(obj)
                             if restricted and not validate(
@@ -277,7 +283,17 @@ class Traversable:
                                     next = getattr(obj, name)
                             else:
                                 try:
-                                    next = obj[name]
+                                    if request is not None:
+                                        try:
+                                            next = obj[name]
+                                        except KeyError, e:
+                                            method = request.get('REQUEST_METHOD', 'GET')
+                                            if request.maybe_webdav_client and not method in ('GET', 'POST',):
+                                                next = NullResource(self, name, request).__of__(self)
+                                            else:
+                                                raise e
+                                    else:
+                                        next = obj[name]
                                     # The item lookup may return a NullResource,
                                     # if this is the case we save it and return it
                                     # if all other lookups fail.
