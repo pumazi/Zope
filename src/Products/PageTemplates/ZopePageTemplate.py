@@ -430,6 +430,7 @@ setattr(ZopePageTemplate, 'source.html', ZopePageTemplate.source_dot_xml)
 manage_addPageTemplateForm = PageTemplateFile(
     'www/ptAdd', globals(), __name__='manage_addPageTemplateForm')
 
+# RRR zmi-killer
 def manage_addPageTemplate(self, id, title='', text='', encoding='utf-8',
                            submit=None, REQUEST=None, RESPONSE=None):
     "Add a Page Template with optional file content."

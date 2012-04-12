@@ -220,8 +220,6 @@ class Traversable:
                         obj = next
                         continue
 
-                # if name == 'acquirer':
-                #     import ipdb; ipdb.set_trace()
                 bobo_traverse = getattr(obj, '__bobo_traverse__', None)
                 try:
                     if name and name[:1] in '@+' and name != '+' and nsParse(name)[1]:

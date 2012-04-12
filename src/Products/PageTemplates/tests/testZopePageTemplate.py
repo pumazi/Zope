@@ -377,8 +377,7 @@ class ZPTRegressions(unittest.TestCase):
     def setUp(self):
         transaction.begin()
         self.app = makerequest(Zope2.app())
-        f = self.app.manage_addProduct['PageTemplates'].manage_addPageTemplate
-        self._addPT = f
+        self._addPT = lambda *a, **kw: manage_addPageTemplate(self.app, *a, **kw)
         self.title = 'title of page template'
         self.text = 'text of page template'
 
@@ -433,8 +432,7 @@ class ZPTMacros(zope.component.testing.PlacelessSetup, unittest.TestCase):
 
         transaction.begin()
         self.app = makerequest(Zope2.app())
-        f = self.app.manage_addProduct['PageTemplates'].manage_addPageTemplate
-        self._addPT = f
+        self._addPT = lambda *a, **kw: manage_addPageTemplate(self.app, *a, **kw)
         self.title = 'title of page template'
         self.text = """
 <metal:block use-macro="template/macros/themacro">
