@@ -2,6 +2,7 @@
 *.py?
 
 bin/
+develop/
 develop-eggs/
 eggs/
 include/
