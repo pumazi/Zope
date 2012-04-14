@@ -82,7 +82,7 @@ Now let's manipulate our test objects a bit:
   >>> print ob.title_or_id()
   Foo
 
-  >>> self.folder.manage_delObjects('object')
+  >>> self.folder._delObject('object')
   >>> 'object' in self.folder.objectIds()
   False
 
