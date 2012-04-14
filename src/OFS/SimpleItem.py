@@ -116,8 +116,7 @@ class Item(Base,
     __propsets__=()
 
     manage_options=(
-        UndoSupport.manage_options
-        + Owned.manage_options
+        Owned.manage_options
         + ({'label': 'Interfaces',
             'action': 'manage_interfaces'},)
         )

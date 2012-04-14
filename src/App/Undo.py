@@ -20,32 +20,17 @@ from AccessControl import ClassSecurityInfo
 from AccessControl.class_init import InitializeClass
 from AccessControl.Permissions import undo_changes
 from App.interfaces import IUndoSupport
-from App.special_dtml import DTMLFile
 from DateTime.DateTime import DateTime
-import ExtensionClass
+from ExtensionClass import Base
 import transaction
 from ZopeUndo.Prefix import Prefix
 from zope.interface import implements
 
 
-class UndoSupport(ExtensionClass.Base):
-
+class UndoSupport(Base):
     implements(IUndoSupport)
 
     security = ClassSecurityInfo()
-
-    manage_options=(
-        {'label': 'Undo', 'action': 'manage_UndoForm'},
-        )
-
-    security.declareProtected(undo_changes, 'manage_UndoForm')
-    manage_UndoForm = DTMLFile(
-        'dtml/undo',
-        globals(),
-        PrincipiaUndoBatchSize=20,
-        first_transaction=0,
-        last_transaction=20,
-        )
 
     def get_request_var_or_attr(self, name, default):
         if hasattr(self, 'REQUEST'):
@@ -127,27 +112,6 @@ class UndoSupport(ExtensionClass.Base):
             d['id'] = tid
 
         return r
-
-    security.declareProtected(undo_changes, 'manage_undo_transactions')
-    def manage_undo_transactions(self, transaction_info=(), REQUEST=None):
-        """
-        """
-        tids = []
-        descriptions = []
-        for tid in transaction_info:
-            tid = tid.split()
-            if tid:
-                tids.append(decode64(tid[0]))
-                descriptions.append(tid[-1])
-
-        if tids:
-            transaction.get().note("Undo %s" % ' '.join(descriptions))
-            self._p_jar.db().undoMultiple(tids)
-
-        if REQUEST is None:
-            return
-        REQUEST['RESPONSE'].redirect("%s/manage_UndoForm" % REQUEST['URL1'])
-        return ''
 
 InitializeClass(UndoSupport)
 

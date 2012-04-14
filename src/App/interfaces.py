@@ -13,15 +13,12 @@
 """App interfaces.
 """
 
-from zope.interface import Attribute
 from zope.interface import Interface
 
 # XXX: might contain non-API methods and outdated comments;
 #      not synced with ZopeBook API Reference;
 #      based on App.Undo.UndoSupport
 class IUndoSupport(Interface):
-
-    manage_UndoForm = Attribute("""Manage Undo form""")
 
     def get_request_var_or_attr(name, default):
         """
@@ -30,9 +27,5 @@ class IUndoSupport(Interface):
     def undoable_transactions(first_transaction=None,
                               last_transaction=None,
                               PrincipiaUndoBatchSize=None):
-        """
-        """
-
-    def manage_undo_transactions(transaction_info=(), REQUEST=None):
         """
         """
