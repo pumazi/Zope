@@ -31,34 +31,13 @@ from zope.interface import implements
 
 from OFS.interfaces import IFindSupport
 
-
+# RRR zmi-killer
+# XXX Componentizing this functionality.
 class FindSupport(Base):
-
     """Find support for Zope Folders"""
-
     implements(IFindSupport)
 
     security = ClassSecurityInfo()
-
-    #findframe is deprecated
-    security.declareProtected(view_management_screens, 'manage_findFrame')
-    manage_findFrame=DTMLFile('dtml/findFrame', globals())
-
-    security.declareProtected(view_management_screens, 'manage_findForm')
-    manage_findForm=DTMLFile('dtml/findForm', globals(),
-                             management_view='Find')
-
-    security.declareProtected(view_management_screens, 'manage_findAdv')
-    manage_findAdv=DTMLFile('dtml/findAdv', globals(),
-                            management_view='Find')
-
-    security.declareProtected(view_management_screens, 'manage_findResult')
-    manage_findResult=DTMLFile('dtml/findResult', globals(),
-                               management_view='Find')
-
-    manage_options=(
-        {'label':'Find', 'action':'manage_findForm'},
-        )
 
     security.declareProtected(view_management_screens, 'ZopeFind')
     def ZopeFind(self, obj, obj_ids=None, obj_metatypes=None,
@@ -148,8 +127,6 @@ class FindSupport(Base):
             if dflag: ob._p_deactivate()
 
         return result
-
-
 
     security.declareProtected(view_management_screens, 'PrincipiaFind')
     PrincipiaFind=ZopeFind

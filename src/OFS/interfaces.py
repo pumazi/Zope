@@ -521,13 +521,7 @@ class IObjectManager(IZopeObject, ICopyContainer,
 #      not synced with ZopeBook API Reference;
 #      based on OFS.FindSupport.FindSupport
 class IFindSupport(Interface):
-
     """Find support for Zope Folders"""
-
-    manage_findFrame = Attribute(""" """)
-    manage_findForm = Attribute(""" """)
-    manage_findAdv = Attribute(""" """)
-    manage_findResult = Attribute(""" """)
 
     def ZopeFind(obj, obj_ids=None, obj_metatypes=None,
                  obj_searchterm=None, obj_expr=None,
