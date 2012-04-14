@@ -642,25 +642,7 @@ class IPropertyManager(Interface):
     Entries in the _properties structure which do not have a 'mode' key
     are assumed to have the mode 'wd' (writeable and deleteable).
 
-    To fully support property management, including the system-provided
-    tabs and user interfaces for working with properties, an object which
-    inherits from PropertyManager should include the following entry in
-    its manage_options structure::
-
-      {'label':'Properties', 'action':'manage_propertiesForm',}
-
-    to ensure that a 'Properties' tab is displayed in its management
-    interface. Objects that inherit from PropertyManager should also
-    include the following entry in its __ac_permissions__ structure::
-
-      ('Manage properties', ('manage_addProperty',
-                             'manage_editProperties',
-                             'manage_delProperties',
-                             'manage_changeProperties',)),
     """
-
-    manage_propertiesForm = Attribute(""" """)
-    manage_propertyTypeForm = Attribute(""" """)
 
     title = BytesLine(
         title=u"Title"
@@ -752,42 +734,6 @@ class IPropertyManager(Interface):
     def propdict():
         """
         """
-
-    # Web interface
-
-    def manage_addProperty(id, value, type, REQUEST=None):
-        """Add a new property via the web.
-
-        Sets a new property with the given id, type, and value.
-        """
-
-    def manage_editProperties(REQUEST):
-        """Edit object properties via the web.
-
-        The purpose of this method is to change all property values,
-        even those not listed in REQUEST; otherwise checkboxes that
-        get turned off will be ignored.  Use manage_changeProperties()
-        instead for most situations.
-        """
-
-    def manage_changeProperties(REQUEST=None, **kw):
-        """Change existing object properties.
-
-        Change object properties by passing either a REQUEST object or
-        name=value parameters
-        """
-
-    def manage_changePropertyTypes(old_ids, props, REQUEST=None):
-        """Replace one set of properties with another
-
-        Delete all properties that have ids in old_ids, then add a
-        property for each item in props.  Each item has a new_id,
-        new_value, and new_type.  The type of new_value should match
-        new_type.
-        """
-
-    def manage_delProperties(ids=None, REQUEST=None):
-        """Delete one or more properties specified by 'ids'."""
 
 
 # XXX: based on OFS.Folder.Folder

@@ -48,7 +48,7 @@ class TestPropertyManager(unittest.TestCase):
         self.assertTrue(type(inst.getProperty('prop')) == type(()))
         self.assertTrue(type(inst.prop) == type(()))
 
-        inst.manage_addProperty('prop2', ['xxx', 'yyy'], 'lines')
+        inst._setProperty('prop2', ['xxx', 'yyy'], 'lines')
         self.assertTrue(type(inst.getProperty('prop2')) == type(()))
         self.assertTrue(type(inst.prop2) == type(()))
 

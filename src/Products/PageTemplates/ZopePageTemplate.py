@@ -82,7 +82,7 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
         {'label':'Edit', 'action':'pt_editForm',
          'help': ('PageTemplates', 'PageTemplate_Edit.stx')},
         {'label':'Test', 'action':'ZScriptHTML_tryForm'},
-        ) + PropertyManager.manage_options \
+        ) \
         + Historical.manage_options \
         + SimpleItem.manage_options \
         + Cacheable.manage_options

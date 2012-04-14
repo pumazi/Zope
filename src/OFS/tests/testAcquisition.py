@@ -74,7 +74,7 @@ class TestGetAttr(unittest.TestCase):
             self.app.manage_addFolder('plain_folder')
 
             # We also want to be able to acquire simple attributes
-            self.app.manage_addProperty(id='simple_type', type='string', value='a string')
+            self.app._setProperty(id='simple_type', type='string', value='a string')
 
             # Set up a subfolder and the objects we want to acquire from
             self.app.manage_addFolder('subfolder')

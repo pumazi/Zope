@@ -78,7 +78,7 @@ Now let's manipulate our test objects a bit:
   >>> print ob.title_or_id()
   object
 
-  >>> ob.manage_changeProperties(title='Foo')
+  >>> ob._updateProperty('title', 'Foo')
   >>> print ob.title_or_id()
   Foo
 

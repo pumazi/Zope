@@ -39,7 +39,6 @@ class DTMLDocument(PropertyManager, DTMLMethod):
 
     manage_options = (
         DTMLMethod.manage_options[:2] +
-        PropertyManager.manage_options +
         DTMLMethod.manage_options[2:]
         )
 
