@@ -23,7 +23,6 @@ from zope.schema import Bool, BytesLine, Tuple
 from AccessControl.interfaces import IOwned
 from AccessControl.interfaces import IRoleManager
 from Acquisition.interfaces import IAcquirer
-from App.interfaces import INavigation
 from App.interfaces import IUndoSupport
 from persistent.interfaces import IPersistent
 from webdav.interfaces import IDAVCollection
@@ -282,50 +281,8 @@ class IZopeObject(Interface):
 
 # XXX: might contain non-API methods and outdated comments;
 #      not synced with ZopeBook API Reference;
-#      based on OFS.SimpleItem.Item and App.Management.Tabs
-class IManageable(Interface):
-
-    """Something that is manageable in the ZMI"""
-
-    manage_tabs = Attribute("""Management tabs""")
-
-    manage_options = Tuple(
-        title=u"Manage options",
-        )
-
-    def manage(URL1):
-        """Show management screen"""
-
-    def manage_afterAdd(item, container):
-        """Gets called after being added to a container"""
-
-    def manage_beforeDelete(item, container):
-        """Gets called before being deleted"""
-
-    def manage_afterClone(item):
-        """Gets called after being cloned"""
-
-    def filtered_manage_options(REQUEST=None):
-        """
-        """
-
-    def manage_workspace(REQUEST):
-        """Dispatch to first interface in manage_options
-        """
-
-    def tabs_path_default(REQUEST):
-        """
-        """
-
-    def tabs_path_info(script, path):
-        """
-        """
-
-
-# XXX: might contain non-API methods and outdated comments;
-#      not synced with ZopeBook API Reference;
 #      based on OFS.SimpleItem.Item
-class IItem(IZopeObject, IManageable, IFTPAccess, IDAVResource,
+class IItem(IZopeObject, IFTPAccess, IDAVResource,
             ICopySource, ITraversable, IOwned, IUndoSupport):
 
     __name__ = BytesLine(
@@ -467,7 +424,7 @@ class ICopyContainer(Interface):
 # XXX: might contain non-API methods and outdated comments;
 #      not synced with ZopeBook API Reference;
 #      based on OFS.ObjectManager.ObjectManager
-class IObjectManager(IZopeObject, ICopyContainer, INavigation, IManageable,
+class IObjectManager(IZopeObject, ICopyContainer,
                      IAcquirer, IPersistent, IDAVCollection, ITraversable,
                      IPossibleSite, IContainer):
     """Generic object manager

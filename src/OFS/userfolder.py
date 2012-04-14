@@ -17,8 +17,6 @@ import os
 
 from Acquisition import aq_base
 
-from App.Management import Navigation
-from App.Management import Tabs
 from App.special_dtml import DTMLFile
 from App.Dialogs import MessageDialog
 from OFS.role import RoleManager
@@ -36,7 +34,7 @@ from AccessControl.users import emergency_user
 from AccessControl.users import reqattr
 
 
-class BasicUserFolder(Navigation, Tabs, Item, RoleManager,
+class BasicUserFolder(Item, RoleManager,
                       accesscontrol_userfolder.BasicUserFolder):
     """Base class for UserFolder-like objects"""
 

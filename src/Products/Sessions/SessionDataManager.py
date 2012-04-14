@@ -18,7 +18,6 @@ from AccessControl.class_init import InitializeClass
 from AccessControl.SecurityInfo import ClassSecurityInfo
 from Acquisition import Implicit
 from App.special_dtml import DTMLFile
-from App.Management import Tabs
 from OFS.owner import Owned
 from OFS.role import RoleManager
 from OFS.SimpleItem import Item
@@ -59,7 +58,7 @@ class SessionIdManagerErr(Exception):
     pass
 
 
-class SessionDataManager(Item, Implicit, Persistent, RoleManager, Owned, Tabs):
+class SessionDataManager(Item, Implicit, Persistent, RoleManager, Owned):
     """ The Zope default session data manager implementation """
 
     meta_type = 'Session Data Manager'

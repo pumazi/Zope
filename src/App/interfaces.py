@@ -16,28 +16,6 @@
 from zope.interface import Attribute
 from zope.interface import Interface
 
-
-# XXX: might contain non-API methods and outdated comments;
-#      not synced with ZopeBook API Reference;
-#      based on App.Management.Navigation
-class INavigation(Interface):
-
-    """Basic navigation UI support"""
-
-    manage = Attribute(""" """)
-    manage_menu = Attribute(""" """)
-    manage_top_frame = Attribute(""" """)
-    manage_page_header = Attribute(""" """)
-    manage_page_footer = Attribute(""" """)
-    manage_form_title = Attribute("""Add Form""")
-    manage_zmi_prefs = Attribute(""" """)
-
-    def manage_zmi_logout(REQUEST, RESPONSE):
-        """Logout current user"""
-
-INavigation.setTaggedValue('manage_page_style.css', Attribute(""" """))
-
-
 # XXX: might contain non-API methods and outdated comments;
 #      not synced with ZopeBook API Reference;
 #      based on App.Undo.UndoSupport

@@ -27,7 +27,6 @@ from AccessControl.SecurityInfo import ClassSecurityInfo
 from Acquisition import Implicit
 from Acquisition import aq_parent
 from Acquisition import aq_inner
-from App.Management import Tabs
 from App.special_dtml import DTMLFile
 from Persistence import Persistent
 from persistent import TimeStamp
@@ -78,7 +77,7 @@ def constructBrowserIdManager(
     if REQUEST is not None:
         return self.manage_main(self, REQUEST, update_menu=1)
     
-class BrowserIdManager(Item, Persistent, Implicit, RoleManager, Owned, Tabs):
+class BrowserIdManager(Item, Persistent, Implicit, RoleManager, Owned):
     """ browser id management class
     """
     implements(IBrowserIdManager)

@@ -16,12 +16,6 @@ class TestItem(unittest.TestCase):
 
         verifyClass(IItem, self._getTargetClass())
 
-    def test_conforms_to_IManageable(self):
-        from OFS.interfaces import IManageable
-        from zope.interface.verify import verifyClass
-
-        verifyClass(IManageable, self._getTargetClass())
-
     def test_raise_StandardErrorMessage_str_errorValue(self):
         class REQUEST(object):
             class RESPONSE(object):

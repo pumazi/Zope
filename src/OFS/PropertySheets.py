@@ -28,7 +28,6 @@ from Acquisition import Implicit
 from App.Common import iso8601_date
 from App.Common import rfc1123_date
 from App.Dialogs import MessageDialog
-from App.Management import Tabs
 from App.special_dtml import DTMLFile
 from ExtensionClass import Base
 from Persistence import Persistent
@@ -41,7 +40,7 @@ from zExceptions import Redirect
 from ZPublisher.Converters import type_converters
 
 
-class View(Tabs, Base):
+class View(Base):
     """A view of an object, typically used for management purposes
 
     This class provides bits of management framework needed by propertysheets
@@ -608,7 +607,7 @@ class DAVProperties(Virtual, PropertySheet, View):
 InitializeClass(DAVProperties)
 
 
-class PropertySheets(Traversable, Implicit, Tabs):
+class PropertySheets(Traversable, Implicit):
     """A tricky container to keep property sets from polluting
        an object's direct attribute namespace."""
 

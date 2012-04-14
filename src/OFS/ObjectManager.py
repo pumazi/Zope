@@ -40,8 +40,6 @@ from App.Common import is_acquired
 from App.config import getConfiguration
 from App.Dialogs import MessageDialog
 from App.FactoryDispatcher import ProductDispatcher
-from App.Management import Navigation
-from App.Management import Tabs
 from App.special_dtml import DTMLFile
 from DateTime import DateTime
 from Persistence import Persistent
@@ -139,8 +137,6 @@ _marker=[]
 
 
 class ObjectManager(CopyContainer,
-                    Navigation,
-                    Tabs,
                     Implicit,
                     Persistent,
                     Collection,
