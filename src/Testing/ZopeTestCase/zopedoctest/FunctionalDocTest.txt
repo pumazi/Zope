@@ -100,36 +100,6 @@ Test Unauthorized
   ...
   Www-Authenticate: basic realm=...
 
-Test Basic Authentication
-
-  >>> from AccessControl.Permissions import manage_properties
-  >>> self.setPermissions([manage_properties])
-
-  >>> print http(r"""
-  ... GET /test_folder_1_/index_html/change_title?title=Foo HTTP/1.1
-  ... Authorization: Basic %s
-  ... """ % user_auth, handle_errors=False)
-  HTTP/1.1 200 OK
-  Content-Length: 0
-  ...
-
-  >>> self.folder.index_html.title_or_id()
-  'Foo'
-
-Test passing in non-base64-encoded login/pass
-
-  >>> from Testing.ZopeTestCase import user_name, user_password
-  >>> print http(r"""
-  ... GET /test_folder_1_/index_html/change_title?title=Baz HTTP/1.1
-  ... Authorization: Basic %s:%s
-  ... """ % (user_name, user_password), handle_errors=False)
-  HTTP/1.1 200 OK
-  Content-Length: 0
-  ...
-
-  >>> self.folder.index_html.title_or_id()
-  'Baz'
-
 Test setting cookies
 
   >>> print http(r"""

@@ -52,10 +52,6 @@ class TestFunctional(ZopeTestCase.FunctionalTestCase):
         set_cookie = '''<dtml-call "RESPONSE.setCookie('foo', 'Bar', path='/')">'''
         self.folder.addDTMLMethod('set_cookie', file=set_cookie)
 
-        # A method changing the title property of an object
-        change_title = '''<dtml-call "manage_changeProperties(title=REQUEST.get('title'))">'''
-        self.folder.addDTMLMethod('change_title', file=change_title)
-
     def testPublishFolder(self):
         response = self.publish(self.folder_path)
         self.assertEqual(response.getStatus(), 200)
@@ -85,31 +81,6 @@ class TestFunctional(ZopeTestCase.FunctionalTestCase):
         self.assertEqual(response.getStatus(), 200)
         self.assertEqual(response.getCookie('foo').get('value'), 'Bar')
         self.assertEqual(response.getCookie('foo').get('path'), '/')
-
-    def testChangeTitle(self):
-        # Change the title of a document
-        self.setPermissions([manage_properties])
-
-        # Note that we must pass basic auth info
-        response = self.publish(self.folder_path+'/index_html/change_title?title=Foo',
-                                self.basic_auth)
-
-        self.assertEqual(response.getStatus(), 200)
-        self.assertEqual(self.folder.index_html.title_or_id(), 'Foo')
-
-    def testPOST(self):
-        # Change the title in a POST request
-        self.setPermissions([manage_properties])
-
-        form = {'title': 'Foo'}
-        post_data = StringIO(urlencode(form))
-
-        response = self.publish(self.folder_path+'/index_html/change_title',
-                                request_method='POST', stdin=post_data,
-                                basic=self.basic_auth)
-
-        self.assertEqual(response.getStatus(), 200)
-        self.assertEqual(self.folder.index_html.title_or_id(), 'Foo')
 
     def testPUTExisting(self):
         # FTP new data into an existing object

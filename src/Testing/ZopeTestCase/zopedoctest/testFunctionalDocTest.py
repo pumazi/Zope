@@ -106,9 +106,6 @@ def setUp(self):
     '''
     self.folder.addDTMLDocument('index_html', file='index')
 
-    change_title = '''<dtml-call "manage_changeProperties(title=REQUEST.get('title'))">'''
-    self.folder.addDTMLMethod('change_title', file=change_title)
-
     set_cookie = '''<dtml-call "REQUEST.RESPONSE.setCookie('cookie_test', 'OK')">'''
     self.folder.addDTMLMethod('set_cookie', file=set_cookie)
 
