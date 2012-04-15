@@ -65,6 +65,8 @@ copy_re = re.compile('^copy([0-9]*)_of_(.*)')
 _marker=[]
 
 
+# RRR zmi-killer
+# XXX This is important functionality that should be generically rewritten.
 class CopyContainer(Base):
 
     """Interface for containerish objects which allow cut/copy/paste"""
