@@ -13,26 +13,12 @@
                implements="ZServer.server">
      <key name="address" datatype="inet-binding-address"/>
      <key name="force-connection-close" datatype="boolean" default="off"/>
-     <key name="webdav-source-clients">
-       <description>
-         Regular expression used to identify clients who should
-         receive WebDAV source responses to GET requests.
-       </description>
-     </key>
      <key name="fast-listen" datatype="boolean" default="on">
        <description>
          Defines whether the HTTP server should listen for requests
          immediately or only after Zope is ready to run.
        </description>
      </key>
-     <key name="use-wsgi" datatype="boolean" default="off" />
-  </sectiontype>
-
-  <sectiontype name="webdav-source-server"
-               datatype=".WebDAVSourceServerFactory"
-               implements="ZServer.server">
-     <key name="address" datatype="inet-binding-address"/>
-     <key name="force-connection-close" datatype="boolean" default="off"/>
      <key name="use-wsgi" datatype="boolean" default="off" />
   </sectiontype>
 

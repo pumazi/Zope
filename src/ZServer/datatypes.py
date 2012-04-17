@@ -66,22 +66,17 @@ class HTTPServerFactory(ServerFactory):
         if not section.address:
             raise ZConfig.ConfigurationError(
                 "No 'address' settings found "
-                "within the 'http-server' or 'webdav-source-server' section")
+                "within the 'http-server' section")
         ServerFactory.__init__(self, section.address)
         self.server_class = HTTPServer.zhttp_server
         self.force_connection_close = section.force_connection_close
-        # webdav-source-server sections won't have webdav_source_clients:
-        webdav_clients = getattr(section, "webdav_source_clients", None)
         self.fast_listen = getattr(section, 'fast_listen', True)
-        self.webdav_source_clients = webdav_clients
         self.use_wsgi = section.use_wsgi
 
     def create(self):
         from ZServer.AccessLogger import access_logger
         handler = self.createHandler()
         handler._force_connection_close = self.force_connection_close
-        if self.webdav_source_clients:
-            handler.set_webdav_source_clients(self.webdav_source_clients)
         server = self.server_class(ip=self.ip, port=self.port,
                                    resolver=self.dnsresolver,
                                    fast_listen=self.fast_listen,
@@ -95,18 +90,6 @@ class HTTPServerFactory(ServerFactory):
             return HTTPServer.zwsgi_handler(self.module, '', self.cgienv)
         else:
             return HTTPServer.zhttp_handler(self.module, '', self.cgienv)
-
-
-class WebDAVSourceServerFactory(HTTPServerFactory):
-
-    def __init__(self, section):
-        from ZServer import HTTPServer
-        HTTPServerFactory.__init__(self, section)
-        self.server_class = HTTPServer.zwebdav_server
-
-    def createHandler(self):
-        from ZServer.WebDAVSrcHandler import WebDAVSrcHandler
-        return WebDAVSrcHandler(self.module, '', self.cgienv)
 
 
 class FTPServerFactory(ServerFactory):

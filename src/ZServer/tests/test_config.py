@@ -119,7 +119,6 @@ class ZServerConfigurationTestCase(BaseTest, WarningInterceptor):
             <http-server>
               address 81
               force-connection-close true
-              webdav-source-clients cadaever
             </http-server>
             """)
         self.assert_(isinstance(factory,
@@ -127,7 +126,6 @@ class ZServerConfigurationTestCase(BaseTest, WarningInterceptor):
         self.assert_(factory.force_connection_close)
         self.assertEqual(factory.host, "")
         self.assertEqual(factory.port, 81)
-        self.assertEqual(factory.webdav_source_clients, "cadaever")
         self.check_prepare(factory)
         server = factory.create()
         self.assertEqual(server.ip, '127.0.0.1')
@@ -155,7 +153,6 @@ class ZServerConfigurationTestCase(BaseTest, WarningInterceptor):
             <http-server>
               address 81
               force-connection-close true
-              webdav-source-clients cadaever
             </http-server>
             """)
         self.check_prepare(factory, defaulthost='0.0.0.0')
@@ -164,24 +161,6 @@ class ZServerConfigurationTestCase(BaseTest, WarningInterceptor):
                          'Zope Collector issue #1507/1728 (ignoring '
                          'defaulthost): %r != \'0.0.0.0\'' % server.ip)
         self.assertEqual(server.port, 9381)
-        server.close()
-
-    def test_webdav_source_factory(self):
-        factory = self.load_factory("""\
-            <webdav-source-server>
-              address 82
-              force-connection-close true
-            </webdav-source-server>
-            """)
-        self.assert_(isinstance(factory,
-                                ZServer.datatypes.WebDAVSourceServerFactory))
-        self.assert_(factory.force_connection_close)
-        self.assertEqual(factory.host, "")
-        self.assertEqual(factory.port, 82)
-        self.check_prepare(factory)
-        server = factory.create()
-        self.assertEqual(server.ip, '127.0.0.1')
-        self.assertEqual(server.port, 9382)
         server.close()
 
     def test_pcgi_factory(self):
