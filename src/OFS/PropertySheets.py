@@ -33,9 +33,6 @@ from App.special_dtml import DTMLFile
 from ExtensionClass import Base
 from Persistence import Persistent
 from Traversable import Traversable
-from webdav.common import isDavCollection
-from webdav.common import urlbase
-from webdav.interfaces import IWriteLock
 from zExceptions import BadRequest
 from zExceptions import Redirect
 from ZPublisher.Converters import type_converters
@@ -297,108 +294,6 @@ class PropertySheet(Traversable, Persistent, Implicit):
             dict[p['id']]=p
         return dict
 
-    propstat='<d:propstat xmlns:n="%s">\n' \
-             '  <d:prop>\n' \
-             '%s\n' \
-             '  </d:prop>\n' \
-             '  <d:status>HTTP/1.1 %s</d:status>\n%s' \
-             '</d:propstat>\n'
-
-    propdesc='  <d:responsedescription>\n' \
-             '  %s\n' \
-             '  </d:responsedescription>\n'
-
-    def dav__allprop(self, propstat=propstat ):
-        # DAV helper method - return one or more propstat elements
-        # indicating property names and values for all properties.
-        result=[]
-        for item in self._propertyMap():
-            name, type=item['id'], item.get('type','string')
-            value=self.getProperty(name)
-
-            if type=='tokens':
-                value=' '.join(map(str, value))
-            elif type=='lines':
-                value='\n'.join(map(str, value))
-            # check for xml property
-            attrs=item.get('meta', {}).get('__xml_attrs__', None)
-            if attrs is not None:
-                # It's a xml property. Don't escape value.
-                attrs=''.join(' %s="%s"' % n for n in attrs.items())
-            else:
-                # It's a non-xml property. Escape value.
-                attrs=''
-                if not hasattr(self,"dav__"+name):
-                    value = xml_escape(value)
-            prop='  <n:%s%s>%s</n:%s>' % (name, attrs, value, name)
-
-            result.append(prop)
-        if not result: return ''
-        result='\n'.join(result)
-
-        return propstat % (self.xml_namespace(), result, '200 OK', '')
-
-    def dav__propnames(self, propstat=propstat):
-        # DAV helper method - return a propstat element indicating
-        # property names for all properties in this PropertySheet.
-        result=[]
-        for name in self.propertyIds():
-            result.append('  <n:%s/>' % name)
-        if not result: return ''
-        result='\n'.join(result)
-        return propstat % (self.xml_namespace(), result, '200 OK', '')
-
-
-    def dav__propstat(self, name, result,
-                      propstat=propstat, propdesc=propdesc):
-        # DAV helper method - return a propstat element indicating
-        # property name and value for the requested property.
-        xml_id=self.xml_namespace()
-        propdict=self._propdict()
-        if name not in propdict:
-            if xml_id:
-                prop='<n:%s xmlns:n="%s"/>\n' % (name, xml_id)
-            else:
-                prop='<%s xmlns=""/>\n' % name
-            code='404 Not Found'
-            if not result.has_key(code):
-                result[code]=[prop]
-            else: result[code].append(prop)
-            return
-        else:
-            item=propdict[name]
-            name, type=item['id'], item.get('type','string')
-            value=self.getProperty(name)
-            if type=='tokens':
-                value=' '.join(map(str, value))
-            elif type=='lines':
-                value='\n'.join(map(str, value))
-            # allow for xml properties
-            attrs=item.get('meta', {}).get('__xml_attrs__', None)
-            if attrs is not None:
-                # It's a xml property. Don't escape value.
-                attrs=''.join(' %s="%s"' % n for n in attrs.items())
-            else:
-                # It's a non-xml property. Escape value.
-                attrs=''
-                if not hasattr(self, 'dav__%s' % name):
-                    value = xml_escape(value)
-            if xml_id:
-                prop='<n:%s%s xmlns:n="%s">%s</n:%s>\n' % (
-                    name, attrs, xml_id, value, name)
-            else:
-                prop ='<%s%s xmlns="">%s</%s>\n' % (
-                    name, attrs, value, name)
-            code='200 OK'
-            if not result.has_key(code):
-                result[code]=[prop]
-            else: result[code].append(prop)
-            return
-
-    del propstat
-    del propdesc
-
-
     # Web interface
 
     manage = DTMLFile('dtml/properties', globals())
@@ -497,117 +392,6 @@ class DefaultProperties(Virtual, PropertySheet, View):
 InitializeClass(DefaultProperties)
 
 
-class DAVProperties(Virtual, PropertySheet, View):
-    """WebDAV properties"""
-
-    id='webdav'
-    _md={'xmlns': 'DAV:'}
-    pm=({'id':'creationdate',     'mode':'r'},
-        {'id':'displayname',      'mode':'r'},
-        {'id':'resourcetype',     'mode':'r'},
-        {'id':'getcontenttype',   'mode':'r'},
-        {'id':'getcontentlength', 'mode':'r'},
-        {'id':'source',           'mode':'r'},
-        {'id':'supportedlock',    'mode':'r'},
-        {'id':'lockdiscovery',    'mode':'r'},
-        )
-
-    def getProperty(self, id, default=None):
-        method='dav__%s' % id
-        if not hasattr(self, method):
-            return default
-        return getattr(self, method)()
-
-    def _setProperty(self, id, value, type='string', meta=None):
-        raise ValueError, '%s cannot be set.' % escape(id)
-
-    def _updateProperty(self, id, value):
-        raise ValueError, '%s cannot be updated.' % escape(id)
-
-    def _delProperty(self, id):
-        raise ValueError, '%s cannot be deleted.' % escape(id)
-
-    def _propertyMap(self):
-        # Only use getlastmodified if returns a value
-        if hasattr(self.v_self(), '_p_mtime'):
-            return self.pm + ({'id':'getlastmodified',  'mode':'r'},)
-        return self.pm
-
-    def propertyMap(self):
-        return [dict.copy() for dict in self._propertyMap()]
-
-    def dav__creationdate(self):
-        return iso8601_date(43200.0)
-
-    def dav__displayname(self):
-        return absattr(xml_escape(self.v_self().title_or_id()))
-
-    def dav__resourcetype(self):
-        vself=self.v_self()
-        if isDavCollection(vself):
-            return '<n:collection/>'
-        return ''
-
-    def dav__getlastmodified(self):
-        return rfc1123_date(self.v_self()._p_mtime)
-
-    def dav__getcontenttype(self):
-        vself=self.v_self()
-        if hasattr(vself, 'content_type'):
-            return absattr(vself.content_type)
-        if hasattr(vself, 'default_content_type'):
-            return absattr(vself.default_content_type)
-        return ''
-
-    def dav__getcontentlength(self):
-        vself=self.v_self()
-        if hasattr(vself, 'get_size'):
-            return vself.get_size()
-        return ''
-
-    def dav__source(self):
-        vself=self.v_self()
-        if hasattr(vself, 'document_src'):
-            url=urlbase(vself.absolute_url())
-            return '\n  <n:link>\n' \
-                   '  <n:src>%s</n:src>\n' \
-                   '  <n:dst>%s/document_src</n:dst>\n' \
-                   '  </n:link>\n  ' % (url, url)
-        return ''
-
-    def dav__supportedlock(self):
-        vself = self.v_self()
-        out = '\n'
-        if IWriteLock.providedBy(vself):
-            out += ('  <n:lockentry>\n'
-                    '  <d:lockscope><d:exclusive/></d:lockscope>\n'
-                    '  <d:locktype><d:write/></d:locktype>\n'
-                    '  </n:lockentry>\n  ')
-        return out
-
-    def dav__lockdiscovery(self):
-        security = getSecurityManager()
-        user = security.getUser().getId()
-
-        vself = self.v_self()
-        out = '\n'
-        if IWriteLock.providedBy(vself):
-            locks = vself.wl_lockValues(killinvalids=1)
-            for lock in locks:
-
-                creator = lock.getCreator()[-1]
-                if creator == user: fake=0
-                else:               fake=1
-
-                out = '%s\n%s' % (out, lock.asLockDiscoveryProperty('n',fake=fake))
-
-            out = '%s\n' % out
-
-        return out
-
-InitializeClass(DAVProperties)
-
-
 class PropertySheets(Traversable, Implicit, Tabs):
     """A tricky container to keep property sets from polluting
        an object's direct attribute namespace."""
@@ -622,9 +406,8 @@ class PropertySheets(Traversable, Implicit, Tabs):
     # optionally to be overridden by derived classes
     PropertySheetClass= PropertySheet
 
-    webdav =DAVProperties()
     def _get_defaults(self):
-        return (self.webdav,)
+        return ()
 
     def __propsets__(self):
         propsets = aq_parent(self).__propsets__
@@ -754,9 +537,8 @@ class DefaultPropertySheets(PropertySheets):
        sheet for compatibility with the arbitrary property mgmt
        design of Zope PropertyManagers."""
     default=DefaultProperties()
-    webdav =DAVProperties()
     def _get_defaults(self):
-        return (self.default, self.webdav)
+        return (self.default,)
 
 InitializeClass(DefaultPropertySheets)
 

@@ -23,7 +23,6 @@ from DocumentTemplate.permissions import change_dtml_documents
 from OFS.DTMLMethod import decapitate
 from OFS.DTMLMethod import DTMLMethod
 from OFS.PropertyManager import PropertyManager
-from webdav.Lockable import ResourceLockedError
 from zExceptions.TracebackSupplement import PathTracebackSupplement
 from zope.contenttype import guess_content_type
 
@@ -54,10 +53,6 @@ class DTMLDocument(PropertyManager, DTMLMethod):
         """ Replace the contents of the document with the text in 'file'.
         """
         self._validateProxy(REQUEST)
-        if self.wl_isLocked():
-            raise ResourceLockedError(
-                'This document has been locked via WebDAV.')
-
         if type(file) is not type(''):
             if REQUEST and not file:
                 raise ValueError, 'No file specified'

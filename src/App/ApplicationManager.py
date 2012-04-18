@@ -24,7 +24,6 @@ from AccessControl.requestmethod import requestmethod
 from Acquisition import Implicit
 from App.CacheManager import CacheManager
 from App.config import getConfiguration
-from App.DavLockManager import DavLockManager
 from App.special_dtml import DTMLFile
 from App.Undo import UndoSupport
 from App.version_txt import version_txt
@@ -246,7 +245,6 @@ class ApplicationManager(Folder, CacheManager):
     isPrincipiaFolderish = 1
     Database = DatabaseChooser('Database') #DatabaseManager()
     DebugInfo = DebugManager()
-    DavLocks = DavLockManager()
 
     manage = manage_main = DTMLFile('dtml/cpContents', globals())
     manage_main._setName('manage_main')
@@ -254,8 +252,6 @@ class ApplicationManager(Folder, CacheManager):
     _objects=(
         {'id': 'Database',
          'meta_type': Database.meta_type},
-        {'id': 'DavLocks',
-         'meta_type': DavLocks.meta_type},
         {'id': 'DebugInfo',
          'meta_type': DebugInfo.meta_type},
         )
