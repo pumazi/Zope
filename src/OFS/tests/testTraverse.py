@@ -665,8 +665,9 @@ def test_view_doesnt_shadow_attribute():
       >>> self.folder.ftf.unrestrictedTraverse('mouse')()
       u'The mouse has been eaten by the eagle'
       >>> self.folder.ftf.unrestrictedTraverse('nonsense')
-      <webdav.NullResource.NullResource object at ...>
-
+      Traceback (most recent call last):
+         ...
+      KeyError: 'nonsense'
 
     Clean up:
 
