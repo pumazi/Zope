@@ -169,13 +169,6 @@ class HTTPResponseTests(unittest.TestCase):
         self.assertEqual(response.status, 404)
         self.assertEqual(response.errmsg, 'Not Found')
 
-    def test_setStatus_ResourceLockedError_exception(self):
-        response = self._makeOne()
-        from webdav.Lockable import ResourceLockedError
-        response.setStatus(ResourceLockedError)
-        self.assertEqual(response.status, 423)
-        self.assertEqual(response.errmsg, 'Locked')
-
     def test_setStatus_InternalError_exception(self):
         from zExceptions import InternalError
         response = self._makeOne()
