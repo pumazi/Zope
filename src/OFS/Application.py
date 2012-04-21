@@ -121,6 +121,8 @@ class Application(ApplicationDefaultPermissions,
         except KeyError:
             pass
 
+        method = REQUEST.get('REQUEST_METHOD', 'GET')
+
         # Waaa. unrestrictedTraverse calls us with a fake REQUEST.
         # There is proabably a better fix for this.
         try:
