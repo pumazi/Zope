@@ -305,11 +305,9 @@ class FileTests(unittest.TestCase):
     def test_interfaces(self):
         from zope.interface.verify import verifyClass
         from OFS.Image import File
-        from webdav.interfaces import IWriteLock
         from ZPublisher.HTTPRangeSupport import HTTPRangeInterface
 
         verifyClass(HTTPRangeInterface, File)
-        verifyClass(IWriteLock, File)
 
     def testUnicode(self):
         val = u'some unicode string here'
@@ -346,12 +344,6 @@ class ImageTests(FileTests):
     def testViewImageOrFile(self):
         pass # dtml method,screw it
 
-    def test_interfaces(self):
-        from zope.interface.verify import verifyClass
-        from OFS.Image import Image
-        from webdav.interfaces import IWriteLock
-
-        verifyClass(IWriteLock, Image)
 
 def test_suite():
     return unittest.TestSuite((
