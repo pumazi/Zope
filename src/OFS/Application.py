@@ -136,12 +136,10 @@ class Application(ApplicationDefaultPermissions,
 
     def DELETE(self, REQUEST, RESPONSE):
         """Delete a resource object."""
-        self.dav__init(REQUEST, RESPONSE)
         raise Forbidden('This resource cannot be deleted.')
 
     def MOVE(self, REQUEST, RESPONSE):
         """Move a resource to a new location."""
-        self.dav__init(REQUEST, RESPONSE)
         raise Forbidden('This resource cannot be moved.')
 
     def absolute_url(self, relative=0):
