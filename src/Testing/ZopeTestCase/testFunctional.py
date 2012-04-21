@@ -149,14 +149,6 @@ class TestFunctional(ZopeTestCase.FunctionalTestCase):
         self.assertEqual(response.getStatus(), 204)
         self.assertEqual(self.folder.index_html(), '')
 
-    def testPROPFIND(self):
-        # PROPFIND should work without passing stdin
-        response = self.publish(self.folder_path+'/index_html',
-                                request_method='PROPFIND',
-                                basic=self.basic_auth)
-
-        self.assertEqual(response.getStatus(), 207)
-
     def testHEAD(self):
         # HEAD should work without passing stdin
         response = self.publish(self.folder_path+'/index_html',
