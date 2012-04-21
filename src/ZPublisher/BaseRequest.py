@@ -341,6 +341,7 @@ class BaseRequest:
             if adapter is None:
                 ## Zope2 doesn't set up its own adapters in a lot of cases
                 ## so we will just use a default adapter.
+                # XXX Well, let's register the default adapter then!
                 adapter = DefaultPublishTraverse(ob, self)
 
             ob2 = adapter.publishTraverse(self, name)
