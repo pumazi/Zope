@@ -195,8 +195,6 @@ class Traversable:
         else:
             obj = self
 
-        # import time ordering problem
-        from webdav.NullResource import NullResource
         resource = _marker
         try:
             while path:

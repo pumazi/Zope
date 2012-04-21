@@ -343,9 +343,6 @@ class CopyContainer(Base):
 
         ob = self._getOb(id)
 
-        if ob.wl_isLocked():
-            raise ResourceLockedError('Object "%s" is locked via WebDAV'
-                                        % ob.getId())
         if not ob.cb_isMoveable():
             raise CopyError(eNotSupported % escape(id))
         self._verifyObjectPaste(ob)
