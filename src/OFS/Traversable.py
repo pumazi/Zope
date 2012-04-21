@@ -276,12 +276,6 @@ class Traversable:
                             else:
                                 try:
                                     next = obj[name]
-                                    # The item lookup may return a NullResource,
-                                    # if this is the case we save it and return it
-                                    # if all other lookups fail.
-                                    if isinstance(next, NullResource):
-                                        resource = next
-                                        raise KeyError(name)
                                 except AttributeError:
                                     # Raise NotFound for easier debugging
                                     # instead of AttributeError: __getitem__
@@ -314,7 +308,6 @@ class Traversable:
                         except AttributeError:
                             raise e
                         if next is _marker:
-                            # If we have a NullResource from earlier use it.
                             next = resource
                             if next is _marker:
                                 # Nothing found re-raise error
