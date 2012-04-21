@@ -147,37 +147,6 @@ class TestCopySupport(HookTest):
              ('yourdoc', 'manage_afterAdd')]
         )
 
-    def test_5_COPY(self):
-        # Test webdav COPY
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = '%s/subfolder/mydoc' % self.folder.absolute_url()
-        self.folder.mydoc.COPY(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'manage_afterAdd'),
-             ('mydoc', 'manage_afterClone')]
-        )
-
-    def test_6_MOVE(self):
-        # Test webdav MOVE
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = '%s/subfolder/mydoc' % self.folder.absolute_url()
-        self.folder.mydoc.MOVE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'manage_beforeDelete'),
-             ('mydoc', 'manage_afterAdd')]
-        )
-
-    def test_7_DELETE(self):
-        # Test webdav DELETE
-        req = self.app.REQUEST
-        req['URL'] = '%s/mydoc' % self.folder.absolute_url()
-        self.folder.mydoc.DELETE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'manage_beforeDelete')]
-        )
-
 
 class TestCopySupportSublocation(HookTest):
     '''Tests the order in which add/clone/del hooks are called'''
@@ -240,42 +209,6 @@ class TestCopySupportSublocation(HookTest):
              ('myfolder', 'manage_beforeDelete'),
              ('yourfolder', 'manage_afterAdd'),
              ('mydoc', 'manage_afterAdd')]
-        )
-
-    def test_5_COPY(self):
-        # Test webdav COPY
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = '%s/subfolder/myfolder' % self.folder.absolute_url()
-        self.folder.myfolder.COPY(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('myfolder', 'manage_afterAdd'),
-             ('mydoc', 'manage_afterAdd'),
-             ('myfolder', 'manage_afterClone'),
-             ('mydoc', 'manage_afterClone')]
-        )
-
-    def test_6_MOVE(self):
-        # Test webdav MOVE
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = '%s/subfolder/myfolder' % self.folder.absolute_url()
-        self.folder.myfolder.MOVE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'manage_beforeDelete'),
-             ('myfolder', 'manage_beforeDelete'),
-             ('myfolder', 'manage_afterAdd'),
-             ('mydoc', 'manage_afterAdd')]
-        )
-
-    def test_7_DELETE(self):
-        # Test webdav DELETE
-        req = self.app.REQUEST
-        req['URL'] = '%s/myfolder' % self.folder.absolute_url()
-        self.folder.myfolder.DELETE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'manage_beforeDelete'),
-             ('myfolder', 'manage_beforeDelete')]
         )
 
 

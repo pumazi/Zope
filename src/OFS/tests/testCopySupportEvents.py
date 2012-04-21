@@ -151,46 +151,6 @@ class TestCopySupport(EventTest):
              ('folder', 'ContainerModifiedEvent')]
         )
 
-    def test_5_COPY(self):
-        # Test webdav COPY
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = ('%s/subfolder/mydoc'
-                                            % self.folder.absolute_url())
-        self.folder.mydoc.COPY(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'ObjectCopiedEvent'),
-             ('mydoc', 'ObjectWillBeAddedEvent'),
-             ('mydoc', 'ObjectAddedEvent'),
-             ('subfolder', 'ContainerModifiedEvent'),
-             ('mydoc', 'ObjectClonedEvent')]
-        )
-
-    def test_6_MOVE(self):
-        # Test webdav MOVE
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = ('%s/subfolder/mydoc'
-                                            % self.folder.absolute_url())
-        self.folder.mydoc.MOVE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'ObjectWillBeMovedEvent'),
-             ('mydoc', 'ObjectMovedEvent'),
-             ('folder', 'ContainerModifiedEvent'),
-             ('subfolder', 'ContainerModifiedEvent')]
-        )
-
-    def test_7_DELETE(self):
-        # Test webdav DELETE
-        req = self.app.REQUEST
-        req['URL'] = '%s/mydoc' % self.folder.absolute_url()
-        self.folder.mydoc.DELETE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('mydoc', 'ObjectWillBeRemovedEvent'),
-             ('mydoc', 'ObjectRemovedEvent'),
-             ('folder', 'ContainerModifiedEvent')]
-        )
-
 
 class TestCopySupportSublocation(EventTest):
     '''Tests the order in which events are fired'''
@@ -272,54 +232,6 @@ class TestCopySupportSublocation(EventTest):
              ('mydoc', 'ObjectWillBeMovedEvent'),
              ('yourfolder', 'ObjectMovedEvent'),
              ('mydoc', 'ObjectMovedEvent'),
-             ('folder', 'ContainerModifiedEvent')]
-        )
-
-    def test_5_COPY(self):
-        # Test webdav COPY
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = ('%s/subfolder/myfolder'
-                                            % self.folder.absolute_url())
-        self.folder.myfolder.COPY(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('myfolder', 'ObjectCopiedEvent'),
-             ('mydoc', 'ObjectCopiedEvent'),
-             ('myfolder', 'ObjectWillBeAddedEvent'),
-             ('mydoc', 'ObjectWillBeAddedEvent'),
-             ('myfolder', 'ObjectAddedEvent'),
-             ('mydoc', 'ObjectAddedEvent'),
-             ('subfolder', 'ContainerModifiedEvent'),
-             ('myfolder', 'ObjectClonedEvent'),
-             ('mydoc', 'ObjectClonedEvent')]
-        )
-
-    def test_6_MOVE(self):
-        # Test webdav MOVE
-        req = self.app.REQUEST
-        req.environ['HTTP_DEPTH'] = 'infinity'
-        req.environ['HTTP_DESTINATION'] = ('%s/subfolder/myfolder'
-                                            % self.folder.absolute_url())
-        self.folder.myfolder.MOVE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('myfolder', 'ObjectWillBeMovedEvent'),
-             ('mydoc', 'ObjectWillBeMovedEvent'),
-             ('myfolder', 'ObjectMovedEvent'),
-             ('mydoc', 'ObjectMovedEvent'),
-             ('folder', 'ContainerModifiedEvent'),
-             ('subfolder', 'ContainerModifiedEvent')]
-        )
-
-    def test_7_DELETE(self):
-        # Test webdav DELETE
-        req = self.app.REQUEST
-        req['URL'] = '%s/myfolder' % self.folder.absolute_url()
-        self.folder.myfolder.DELETE(req, req.RESPONSE)
-        self.assertEqual(eventlog.called(),
-            [('myfolder', 'ObjectWillBeRemovedEvent'),
-             ('mydoc', 'ObjectWillBeRemovedEvent'),
-             ('myfolder', 'ObjectRemovedEvent'),
-             ('mydoc', 'ObjectRemovedEvent'),
              ('folder', 'ContainerModifiedEvent')]
         )
 
