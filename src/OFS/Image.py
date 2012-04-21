@@ -563,8 +563,6 @@ class File(Persistent, Implicit, PropertyManager,
     security.declareProtected(change_images_and_files, 'PUT')
     def PUT(self, REQUEST, RESPONSE):
         """Handle HTTP PUT requests"""
-        self.dav__init(REQUEST, RESPONSE)
-        self.dav__simpleifhandler(REQUEST, RESPONSE, refresh=1)
         type=REQUEST.get_header('content-type', None)
 
         file=REQUEST['BODYFILE']
