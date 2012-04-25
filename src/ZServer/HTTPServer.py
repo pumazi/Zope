@@ -206,19 +206,6 @@ class zhttp_handler:
         env['GATEWAY_INTERFACE']='CGI/1.1'
         env['REMOTE_ADDR']=request.channel.addr[0]
 
-
-        # This is a really bad hack to support WebDAV
-        # clients accessing documents through GET
-        # on the HTTP port. We check if your WebDAV magic
-        # machinery is enabled and if the client is recognized
-        # as WebDAV client. If yes, we fake the environment
-        # to pretend the ZPublisher to have a WebDAV request.
-        # This sucks like hell but it works pretty fine ;-)
-
-        if env['REQUEST_METHOD']=='GET' and self._wdav_client_reg:
-            self._munge_webdav_source_port(request, env)
-
-
         # If we're using a resolving logger, try to get the
         # remote host from the resolver's cache.
         if hasattr(server.logger, 'resolver'):
@@ -241,20 +228,6 @@ class zhttp_handler:
                     env[key]=value
         env.update(self.env_override)
         return env
-
-    _wdav_client_reg = None
-
-    def _munge_webdav_source_port(self, request, env):
-        agent = get_header(USER_AGENT, request.header)
-        if self._wdav_client_reg(agent):
-            env['WEBDAV_SOURCE_PORT'] = 1
-            path_info = env['PATH_INFO']
-            path_info = posixpath.join(path_info, 'manage_DAVget')
-            path_info = posixpath.normpath(path_info)
-            env['PATH_INFO'] = path_info
-
-    def set_webdav_source_clients(self, regex):
-        self._wdav_client_reg = re.compile(regex).search
 
     def continue_request(self, sin, request):
         "continue handling request now that we have the stdin"
@@ -490,7 +463,3 @@ class zhttp_server(http_server):
             return self.socket.listen (num)
         else:
             return 0
-
-
-class zwebdav_server(zhttp_server):
-    server_protocol = 'WebDAV'

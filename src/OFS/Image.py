@@ -26,12 +26,10 @@ from AccessControl.Permissions import ftp_access
 from AccessControl.Permissions import delete_objects
 from AccessControl.SecurityInfo import ClassSecurityInfo
 from Acquisition import Implicit
+from App.Common import rfc1123_date
 from App.special_dtml import DTMLFile
 from DateTime.DateTime import DateTime
 from Persistence import Persistent
-from webdav.common import rfc1123_date
-from webdav.interfaces import IWriteLock
-from webdav.Lockable import ResourceLockedError
 from ZPublisher import HTTPRangeSupport
 from ZPublisher.HTTPRequest import FileUpload
 from ZPublisher.Iterators import filestream_iterator
@@ -97,7 +95,6 @@ class File(Persistent, Implicit, PropertyManager,
                implementedBy(RoleManager),
                implementedBy(Item_w__name__),
                implementedBy(Cacheable),
-               IWriteLock,
                HTTPRangeSupport.HTTPRangeInterface,
               )
     meta_type='File'
@@ -184,29 +181,20 @@ class File(Persistent, Implicit, PropertyManager,
 
             if if_range is not None:
                 # Only send ranges if the data isn't modified, otherwise send
-                # the whole object. Support both ETags and Last-Modified dates!
-                if len(if_range) > 1 and if_range[:2] == 'ts':
-                    # ETag:
-                    if if_range != self.http__etag():
+                # the whole object. Support Last-Modified dates.
+                date = if_range.split( ';')[0]
+                try: mod_since=long(DateTime(date).timeTime())
+                except: mod_since=None
+                if mod_since is not None:
+                    if self._p_mtime:
+                        last_mod = long(self._p_mtime)
+                    else:
+                        last_mod = long(0)
+                    if last_mod > mod_since:
                         # Modified, so send a normal response. We delete
                         # the ranges, which causes us to skip to the 200
                         # response.
                         ranges = None
-                else:
-                    # Date
-                    date = if_range.split( ';')[0]
-                    try: mod_since=long(DateTime(date).timeTime())
-                    except: mod_since=None
-                    if mod_since is not None:
-                        if self._p_mtime:
-                            last_mod = long(self._p_mtime)
-                        else:
-                            last_mod = long(0)
-                        if last_mod > mod_since:
-                            # Modified, so send a normal response. We delete
-                            # the ranges, which causes us to skip to the 200
-                            # response.
-                            ranges = None
 
             if ranges:
                 # Search for satisfiable ranges.
@@ -451,7 +439,6 @@ class File(Persistent, Implicit, PropertyManager,
         self.data=data
         self.ZCacheable_invalidate()
         self.ZCacheable_set(None)
-        self.http__refreshEtag()
 
     security.declareProtected(change_images_and_files, 'manage_edit')
     def manage_edit(self, title, content_type, precondition='',
@@ -459,9 +446,6 @@ class File(Persistent, Implicit, PropertyManager,
         """
         Changes the title and content type attributes of the File or Image.
         """
-        if self.wl_isLocked():
-            raise ResourceLockedError, "File is locked via WebDAV"
-
         self.title=str(title)
         self.content_type=str(content_type)
         if precondition: self.precondition=str(precondition)
@@ -484,9 +468,6 @@ class File(Persistent, Implicit, PropertyManager,
 
         The file or images contents are replaced with the contents of 'file'.
         """
-        if self.wl_isLocked():
-            raise ResourceLockedError, "File is locked via WebDAV"
-
         data, size = self._read_data(file)
         content_type=self._get_content_type(file, data, self.__name__,
                                             'application/octet-stream')
@@ -581,8 +562,6 @@ class File(Persistent, Implicit, PropertyManager,
     security.declareProtected(change_images_and_files, 'PUT')
     def PUT(self, REQUEST, RESPONSE):
         """Handle HTTP PUT requests"""
-        self.dav__init(REQUEST, RESPONSE)
-        self.dav__simpleifhandler(REQUEST, RESPONSE, refresh=1)
         type=REQUEST.get_header('content-type', None)
 
         file=REQUEST['BODYFILE']
@@ -823,7 +802,6 @@ class Image(File):
 
         self.ZCacheable_invalidate()
         self.ZCacheable_set(None)
-        self.http__refreshEtag()
 
     def __str__(self):
         return self.tag()

@@ -44,7 +44,6 @@ from DocumentTemplate.html_quote import html_quote
 from DocumentTemplate.ustr import ustr
 from ExtensionClass import Base
 from Persistence import Persistent
-from webdav.Resource import Resource
 from zExceptions import Redirect
 from zExceptions.ExceptionFormatter import format_exception
 from zope.interface import implements
@@ -61,7 +60,6 @@ import logging
 logger = logging.getLogger()
 
 class Item(Base,
-           Resource,
            CopySource,
            Traversable,
            Owned,

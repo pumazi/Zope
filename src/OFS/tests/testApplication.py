@@ -91,16 +91,12 @@ class ApplicationTests(unittest.TestCase):
 
     def test___bobo_traverse__attribute_key_miss_R_M_not_GET_POST(self):
         from Acquisition import aq_inner, aq_parent
-        from webdav.NullResource import NullResource
 
         app = self._makeOne()
         app._getOb = _noWay
         request = {'REQUEST_METHOD': 'GOOFY'}
+        self.assertRaises(KeyError, app.__bobo_traverse__, request, 'OTHER')
 
-        result = app.__bobo_traverse__(request, 'OTHER')
-
-        self.assertTrue(isinstance(result, NullResource))
-        self.assertTrue(aq_parent(aq_inner(result)) is app)
 
 def _noWay(self, key, default=None):
     raise KeyError(key)

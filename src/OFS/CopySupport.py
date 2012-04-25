@@ -39,7 +39,6 @@ from App.Dialogs import MessageDialog
 from App.special_dtml import HTML
 from App.special_dtml import DTMLFile
 from ExtensionClass import Base
-from webdav.Lockable import ResourceLockedError
 from zExceptions import Unauthorized, BadRequest
 from ZODB.POSException import ConflictError
 from zope.interface import implements
@@ -109,10 +108,6 @@ class CopyContainer(Base):
         oblist=[]
         for id in ids:
             ob=self._getOb(id)
-
-            if ob.wl_isLocked():
-                raise ResourceLockedError('Object "%s" is locked via WebDAV'
-                                            % ob.getId())
 
             if not ob.cb_isMoveable():
                 raise CopyError(eNotSupported % escape(id))
@@ -236,7 +231,6 @@ class CopyContainer(Base):
 
                 self._setObject(id, ob)
                 ob = self._getOb(id)
-                ob.wl_clearLocks()
 
                 ob._postCopy(self, op=0)
 
@@ -351,9 +345,6 @@ class CopyContainer(Base):
 
         ob = self._getOb(id)
 
-        if ob.wl_isLocked():
-            raise ResourceLockedError('Object "%s" is locked via WebDAV'
-                                        % ob.getId())
         if not ob.cb_isMoveable():
             raise CopyError(eNotSupported % escape(id))
         self._verifyObjectPaste(ob)

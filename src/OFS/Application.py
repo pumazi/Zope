@@ -28,7 +28,6 @@ from DateTime import DateTime
 from OFS.metaconfigure import get_packages_to_initialize
 from OFS.metaconfigure import package_initialized
 from OFS.userfolder import UserFolder
-from webdav.NullResource import NullResource
 from zExceptions import Redirect as RedirectException, Forbidden
 
 from zope.interface import implements
@@ -116,8 +115,6 @@ class Application(ApplicationDefaultPermissions,
             pass
 
         method = REQUEST.get('REQUEST_METHOD', 'GET')
-        if not method in ('GET', 'POST'):
-            return NullResource(self, name, REQUEST).__of__(self)
 
         # Waaa. unrestrictedTraverse calls us with a fake REQUEST.
         # There is proabably a better fix for this.
@@ -132,12 +129,10 @@ class Application(ApplicationDefaultPermissions,
 
     def DELETE(self, REQUEST, RESPONSE):
         """Delete a resource object."""
-        self.dav__init(REQUEST, RESPONSE)
         raise Forbidden('This resource cannot be deleted.')
 
     def MOVE(self, REQUEST, RESPONSE):
         """Move a resource to a new location."""
-        self.dav__init(REQUEST, RESPONSE)
         raise Forbidden('This resource cannot be moved.')
 
     # RRR zmi-killer

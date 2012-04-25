@@ -25,8 +25,6 @@ from AccessControl.interfaces import IRoleManager
 from Acquisition.interfaces import IAcquirer
 from App.interfaces import IUndoSupport
 from persistent.interfaces import IPersistent
-from webdav.interfaces import IDAVCollection
-from webdav.interfaces import IDAVResource
 
 
 class IOrderedContainer(Interface):
@@ -282,7 +280,7 @@ class IZopeObject(Interface):
 # XXX: might contain non-API methods and outdated comments;
 #      not synced with ZopeBook API Reference;
 #      based on OFS.SimpleItem.Item
-class IItem(IZopeObject, IFTPAccess, IDAVResource,
+class IItem(IZopeObject, IFTPAccess,
             ICopySource, ITraversable, IOwned, IUndoSupport):
 
     __name__ = BytesLine(
@@ -425,7 +423,7 @@ class ICopyContainer(Interface):
 #      not synced with ZopeBook API Reference;
 #      based on OFS.ObjectManager.ObjectManager
 class IObjectManager(IZopeObject, ICopyContainer,
-                     IAcquirer, IPersistent, IDAVCollection, ITraversable,
+                     IAcquirer, IPersistent, ITraversable,
                      IPossibleSite, IContainer):
     """Generic object manager
 
@@ -689,7 +687,7 @@ class IPropertyManager(Interface):
 
 # XXX: based on OFS.Folder.Folder
 class IFolder(IObjectManager, IPropertyManager, IRoleManager,
-              IDAVCollection, IItem, IFindSupport):
+              IItem, IFindSupport):
 
     """Folders are basic container objects that provide a standard
     interface for object management. Folder objects also implement a

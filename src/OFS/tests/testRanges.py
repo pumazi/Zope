@@ -109,7 +109,7 @@ class TestRequestRange(unittest.TestCase):
         return body + rv
 
     def createLastModifiedDate(self, offset=0):
-        from webdav.common import rfc1123_date
+        from App.Common import rfc1123_date
         return rfc1123_date(self.file._p_mtime + offset)
 
     def expectUnsatisfiable(self, range):
@@ -344,14 +344,6 @@ class TestRequestRange(unittest.TestCase):
     def testIsNotModifiedIfRangeDate(self):
         self.expectSingleRange('10-25', 10, 26,
             if_range=self.createLastModifiedDate(offset=100))
-
-    def testEqualIfRangeEtag(self):
-        self.expectSingleRange('10-25', 10, 26,
-            if_range=self.file.http__etag())
-
-    def testNotEqualIfRangeEtag(self):
-        self.expectOK('10-25',
-            if_range=self.file.http__etag() + 'bar')
 
 
 def test_suite():

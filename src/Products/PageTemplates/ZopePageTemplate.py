@@ -34,7 +34,6 @@ from OFS.Traversable import Traversable
 from OFS.PropertyManager import PropertyManager
 from Shared.DC.Scripts.Script import Script 
 from Shared.DC.Scripts.Signature import FuncCode
-from webdav.Lockable import ResourceLockedError
 
 from Products.PageTemplates.PageTemplate import PageTemplate
 from Products.PageTemplates.PageTemplateFile import PageTemplateFile
@@ -158,7 +157,7 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
                                                preferred_encodings)
             output_encoding = encoding
 
-        # for content updated through WebDAV, FTP 
+        # for content updated through FTP 
         if not keep_output_encoding:
             self.output_encoding = output_encoding
 
@@ -178,10 +177,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
     security.declareProtected(change_page_templates, 'pt_editAction')
     def pt_editAction(self, REQUEST, title, text, content_type, expand):
         """Change the title and document."""
-
-        if self.wl_isLocked():
-            raise ResourceLockedError("File is locked via WebDAV")
-
         self.expand = expand
 
         # The ZMI edit view uses utf-8! So we can safely assume
@@ -214,10 +209,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
     security.declareProtected(change_page_templates, 'pt_upload')
     def pt_upload(self, REQUEST, file='', encoding='utf-8'):
         """Replace the document with the text in file."""
-
-        if self.wl_isLocked():
-            raise ResourceLockedError("File is locked via WebDAV")
-
         if isinstance(file, str):
             filename = None
             text = file
@@ -342,9 +333,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
     security.declareProtected(change_page_templates, 'PUT')
     def PUT(self, REQUEST, RESPONSE):
         """ Handle HTTP PUT requests """
-
-        self.dav__init(REQUEST, RESPONSE)
-        self.dav__simpleifhandler(REQUEST, RESPONSE, refresh=1)
         text = REQUEST.get('BODY', '')
         content_type = guess_type('', text) 
         self.pt_edit(text, content_type)
@@ -415,10 +403,6 @@ class ZopePageTemplate(Script, PageTemplate, Historical, Cacheable,
         result = PageTemplate.pt_render(self, source, extra_context)
         assert isinstance(result, unicode)
         return result
-
-
-    def wl_isLocked(self):
-        return 0
 
 
 InitializeClass(ZopePageTemplate)

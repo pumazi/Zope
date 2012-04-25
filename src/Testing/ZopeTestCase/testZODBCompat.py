@@ -93,24 +93,6 @@ class TestCopyPaste(ZopeTestCase.ZopeTestCase):
         self.assertFalse(hasattr(self.folder, 'doc'))
         self.assertTrue(hasattr(self.folder, 'new_doc'))
 
-    def testCOPY(self):
-        # WebDAV COPY
-        request = self.app.REQUEST
-        request.environ['HTTP_DEPTH'] = 'infinity'
-        request.environ['HTTP_DESTINATION'] = 'http://foo.com/%s/new_doc' % folder_name
-        self.folder.doc.COPY(request, request.RESPONSE)
-        self.assertTrue(hasattr(self.folder, 'doc'))
-        self.assertTrue(hasattr(self.folder, 'new_doc'))
-
-    def testMOVE(self):
-        # WebDAV MOVE
-        request = self.app.REQUEST
-        request.environ['HTTP_DEPTH'] = 'infinity'
-        request.environ['HTTP_DESTINATION'] = 'http://foo.com/%s/new_doc' % folder_name
-        self.folder.doc.MOVE(request, request.RESPONSE)
-        self.assertFalse(hasattr(self.folder, 'doc'))
-        self.assertTrue(hasattr(self.folder, 'new_doc'))
-
 
 class TestAttributesOfCleanObjects(ZopeTestCase.ZopeTestCase):
     '''This testcase shows that _v_ and _p_ attributes are NOT bothered

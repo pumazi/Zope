@@ -43,9 +43,6 @@ from App.FactoryDispatcher import ProductDispatcher
 from App.special_dtml import DTMLFile
 from DateTime import DateTime
 from Persistence import Persistent
-from webdav.Collection import Collection
-from webdav.Lockable import ResourceLockedError
-from webdav.NullResource import NullResource
 from zExceptions import BadRequest
 from zope.interface import implements
 from zope.component.interfaces import ComponentLookupError
@@ -139,7 +136,6 @@ _marker=[]
 class ObjectManager(CopyContainer,
                     Implicit,
                     Persistent,
-                    Collection,
                     Traversable,
                    ):
 
@@ -549,15 +545,8 @@ class ObjectManager(CopyContainer,
 
     def __getitem__(self, key):
         v=self._getOb(key, None)
-        if v is not None: return v
-        # RRR zmi-killer
-        # XXX Grumble Grumble...
-        if hasattr(self, 'REQUEST'):
-            request=self.REQUEST
-            method=request.get('REQUEST_METHOD', 'GET')
-            if request.maybe_webdav_client and not method in ('GET', 'POST'):
-                return NullResource(self, key, request).__of__(self)
-        # /RRR zmi-killer
+        if v is not None:
+            return v
         raise KeyError, key
 
     def __setitem__(self, key, value):

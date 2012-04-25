@@ -17,7 +17,6 @@ Folders are the basic container objects and are analogous to directories.
 
 from AccessControl.class_init import InitializeClass
 from App.special_dtml import DTMLFile
-from webdav.Collection import Collection
 from zope.interface import implements
 
 from OFS.FindSupport import FindSupport
@@ -50,7 +49,6 @@ class Folder(
     ObjectManager,
     PropertyManager,
     RoleManager,
-    Collection,
     Item,
     FindSupport,
     ):

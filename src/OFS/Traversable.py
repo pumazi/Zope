@@ -200,8 +200,6 @@ class Traversable:
         else:
             request = None
 
-        # import time ordering problem
-        from webdav.NullResource import NullResource
         resource = _marker
         try:
             while path:
@@ -281,23 +279,7 @@ class Traversable:
                                     next = getattr(obj, name)
                             else:
                                 try:
-                                    if request is not None:
-                                        try:
-                                            next = obj[name]
-                                        except KeyError, e:
-                                            method = request.get('REQUEST_METHOD', 'GET')
-                                            if request.maybe_webdav_client and not method in ('GET', 'POST',):
-                                                next = NullResource(self, name, request).__of__(self)
-                                            else:
-                                                raise e
-                                    else:
-                                        next = obj[name]
-                                    # The item lookup may return a NullResource,
-                                    # if this is the case we save it and return it
-                                    # if all other lookups fail.
-                                    if isinstance(next, NullResource):
-                                        resource = next
-                                        raise KeyError(name)
+                                    next = obj[name]
                                 except AttributeError:
                                     # Raise NotFound for easier debugging
                                     # instead of AttributeError: __getitem__
@@ -330,7 +312,6 @@ class Traversable:
                         except AttributeError:
                             raise e
                         if next is _marker:
-                            # If we have a NullResource from earlier use it.
                             next = resource
                             if next is _marker:
                                 # Nothing found re-raise error

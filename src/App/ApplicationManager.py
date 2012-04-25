@@ -25,7 +25,6 @@ from AccessControl.requestmethod import requestmethod
 from Acquisition import Implicit
 from App.CacheManager import CacheManager
 from App.config import getConfiguration
-from App.DavLockManager import DavLockManager
 from App.special_dtml import DTMLFile
 from App.Undo import UndoSupport
 from App.version_txt import version_txt
@@ -217,7 +216,6 @@ class ApplicationManager(Folder, CacheManager):
     __roles__ = ('Manager',)
     isPrincipiaFolderish = 1
     Database = DatabaseChooser('Database') #DatabaseManager()
-    DavLocks = DavLockManager()
 
     id = 'Control_Panel'
     name = title = 'Control Panel'
